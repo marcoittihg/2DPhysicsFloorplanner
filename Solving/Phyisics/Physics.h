@@ -58,6 +58,8 @@ private:
      */
     float preferedAnchorCoeff = 0;
 
+    float ioForceMultiplier = 1;
+
     /** Coefficient that multiply the actraction force
      *  to the closest feasible placement
      */
@@ -91,6 +93,7 @@ private:
      */
     Vector2 noiseStepDir;
 
+    bool enableBarrierCollisions;
 public:
     /** Called at the start of the simulation
      */
@@ -135,6 +138,14 @@ public:
     void setNoiseModulus(float noiseModulus);
 
     void setNoiseSpeedCoeff(float noiseSpeedCoeff);
+
+    bool isEnableBarrierCollisions() const;
+
+    void setEnableBarrierCollisions(bool enableBarrierCollisions);
+
+    float getIoForceMultiplier() const;
+
+    void setIoForceMultiplier(float ioForceMultiplier);
 };
 
 

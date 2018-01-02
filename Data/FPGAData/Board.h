@@ -37,6 +37,6 @@ public:
     /**
      * @return the value of the block matrix at position [i][j]
      */
-    Block getBlockMatrix(char, char) const;
+    Block getBlockMatrix(unsigned char, unsigned char) const;
 };
 #endif //BUBBLEREGIONSFLOORPLANNER_BOARD_H

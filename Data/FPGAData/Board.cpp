@@ -13,7 +13,7 @@ char Board::getTileHeight() const {
     return tileHeight;
 }
 
-Block Board::getBlockMatrix(char i, char j) const {
+Block Board::getBlockMatrix(unsigned char i, unsigned char j) const {
     return blockMatrix[i][j];
 }
 

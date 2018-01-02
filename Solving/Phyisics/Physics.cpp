@@ -16,6 +16,7 @@ void Physics::onStart() {
     noiseSpeedCoeff = 0;
     noiseModulus = 0;
     noiseStepDir = Vector2(0,1);
+    enableBarrierCollisions = false;
 
 }
 
@@ -119,44 +120,45 @@ void Physics::doStep() {
     }
 
     //Check if some region is outside of the border
-    /*
-    for (int i = 0; i < regionNum; ++i) {
-        Rigidbody& rb = rigidbodies[i];
+    if(enableBarrierCollisions) {
+        for (int i = 0; i < regionNum; ++i) {
+            Rigidbody &rb = rigidbodies[i];
 
-        float halfWidth = static_cast<float>(rb.getDimension().getX() * 0.5);
-        float halfHeight = static_cast<float>(rb.getDimension().getY() * 0.5);
+            float halfWidth = static_cast<float>(rb.getDimension().getX() * 0.5);
+            float halfHeight = static_cast<float>(rb.getDimension().getY() * 0.5);
 
-        float boardWidth = board->getDimension().get_y();
-        float boardHeight = board->getDimension().get_x();
+            float boardWidth = board->getDimension().get_y();
+            float boardHeight = board->getDimension().get_x();
 
-        Vector2 halfBoardDim = Vector2(boardWidth, boardHeight);
-        halfBoardDim.multiply(0.5);
+            Vector2 halfBoardDim = Vector2(boardWidth, boardHeight);
+            halfBoardDim.multiply(0.5);
 
-        Vector2 pos = rb.getPosition();
-        Vector2 spe = rb.getSpeed();
+            Vector2 pos = rb.getPosition();
+            Vector2 spe = rb.getSpeed();
 
 
-        if(pos.getX() + halfBoardDim.getX() < halfWidth){
-            pos.setX(halfWidth - halfBoardDim.getX());
-            spe.setX(spe.getX() * (-barriersRestitutionCoeff));
+            if (pos.getX() + halfBoardDim.getX() < halfWidth) {
+                pos.setX(halfWidth - halfBoardDim.getX());
+                spe.setX(spe.getX() * (-barriersRestitutionCoeff));
+            }
+            if (pos.getY() + halfBoardDim.getY() < halfHeight) {
+                pos.setY(halfHeight - halfBoardDim.getY());
+                spe.setY(spe.getY() * (-barriersRestitutionCoeff));
+            }
+
+            if (pos.getX() > halfBoardDim.getX() - halfWidth) {
+                pos.setX(halfBoardDim.getX() - halfWidth);
+                spe.setX(spe.getX() * (-barriersRestitutionCoeff));
+            }
+            if (pos.getY() > halfBoardDim.getY() - halfHeight) {
+                pos.setY(halfBoardDim.getY() - halfHeight);
+                spe.setY(spe.getY() * (-barriersRestitutionCoeff));
+            }
+
+            rb.setPosition(pos);
+            rb.setSpeed(spe);
         }
-        if(pos.getY() + halfBoardDim.getY() < halfHeight){
-            pos.setY(halfHeight - halfBoardDim.getY());
-            spe.setY(spe.getY() * (-barriersRestitutionCoeff));
-        }
-
-        if(pos.getX() > halfBoardDim.getX() - halfWidth){
-            pos.setX(halfBoardDim.getX() - halfWidth);
-            spe.setX(spe.getX() * (-barriersRestitutionCoeff));
-        }
-        if(pos.getY() > halfBoardDim.getY() - halfHeight){
-            pos.setY(halfBoardDim.getY() - halfHeight);
-            spe.setY(spe.getY() * (-barriersRestitutionCoeff));
-        }
-
-        rb.setPosition(pos);
-        rb.setSpeed(spe);
-    }*/
+    }
 
 
     FloorplanningManager::getINSTANCE().onPysicsStep();
@@ -260,4 +262,20 @@ void Physics::setNoiseModulus(float noiseModulus) {
 
 void Physics::setNoiseSpeedCoeff(float noiseSpeedCoeff) {
     Physics::noiseSpeedCoeff = noiseSpeedCoeff;
+}
+
+bool Physics::isEnableBarrierCollisions() const {
+    return enableBarrierCollisions;
+}
+
+void Physics::setEnableBarrierCollisions(bool enableBarrierCollisions) {
+    Physics::enableBarrierCollisions = enableBarrierCollisions;
+}
+
+float Physics::getIoForceMultiplier() const {
+    return ioForceMultiplier;
+}
+
+void Physics::setIoForceMultiplier(float ioForceMultiplier) {
+    Physics::ioForceMultiplier = ioForceMultiplier;
 }

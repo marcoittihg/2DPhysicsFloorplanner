@@ -75,12 +75,79 @@ void FloorplanningManager::onPysicsStep() {
         }else{
             //Change state for next iteration
             state = FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY;
+            Physics::getINSTANCE().setWireForceCoeff(0.5);
+            Physics::getINSTANCE().setEnableBarrierCollisions(true);
             time = 0;
+            Physics::getINSTANCE().setIoForceMultiplier(20);
         }
     } else if(state == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
+        PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
+        int regionNum = problem->getNumRegions();
+        /*
+        Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+        Vector2 halfBoardDim = Vector2(boardDim.get_y()/2, boardDim.get_x()/2);
+
+        Vector2 topLeft = Vector2(-halfBoardDim.getX() *2/3 , halfBoardDim.getY() / 2);
+        Vector2 topRight = Vector2(halfBoardDim.getX() *2/3 , halfBoardDim.getY() / 2);
+        Vector2 bottomLeft = Vector2(-halfBoardDim.getX() *2/3 , -halfBoardDim.getY() / 2);
+        Vector2 bottomRight = Vector2(halfBoardDim.getX() *2/3 , -halfBoardDim.getY() / 2);
+        Vector2 top = Vector2(0 , halfBoardDim.getY() *2/ 3);
+        Vector2 center = Vector2(0 , 0);
+        Vector2 bottom = Vector2(0, -halfBoardDim.getY() *2/ 3);
+
+        Vector2 regionTopLeft = regions[16].getRb()->getPosition();
+        Vector2 regionTopRight = regions[15].getRb()->getPosition();
+        Vector2 regionBottomLeft = regions[1].getRb()->getPosition();
+        Vector2 regionBottomRight = regions[12].getRb()->getPosition();
+        Vector2 regionTop = regions[25].getRb()->getPosition();
+        Vector2 regionCenter = regions[28].getRb()->getPosition();
+        Vector2 regionBottom = regions[19].getRb()->getPosition();
+
+        regionTopLeft.multiply(-1);
+        regionTopRight.multiply(-1);
+        regionBottomLeft.multiply(-1);
+        regionBottomRight.multiply(-1);
+        regionTop.multiply(-1);
+        regionCenter.multiply(-1);
+        regionBottom.multiply(-1);
+
+        Vector2 force1 = topLeft;
+        Vector2 force2 = topRight;
+        Vector2 force3 = bottomLeft;
+        Vector2 force4 = bottomRight;
+        Vector2 force5 = top;
+        Vector2 force6 = center;
+        Vector2 force7 = bottom;
+
+        force1.add(regionTopLeft);
+        force2.add(regionTopRight);
+        force3.add(regionBottomLeft);
+        force4.add(regionBottomRight);
+        force5.add(regionTop);
+        force6.add(regionCenter);
+        force7.add(regionBottom);
+
+        force1.multiply(500);
+        force2.multiply(500);
+        force3.multiply(500);
+        force4.multiply(500);
+        force5.multiply(500);
+        force6.multiply(500);
+        force7.multiply(500);
+
+        regions[16].getRb()->addImpulse(force1, Physics::FIXED_STEP_TIME);
+        regions[15].getRb()->addImpulse(force2, Physics::FIXED_STEP_TIME);
+        regions[1].getRb()->addImpulse(force3, Physics::FIXED_STEP_TIME);
+        regions[12].getRb()->addImpulse(force4, Physics::FIXED_STEP_TIME);
+        regions[25].getRb()->addImpulse(force5, Physics::FIXED_STEP_TIME);
+        regions[28].getRb()->addImpulse(force6, Physics::FIXED_STEP_TIME);
+        regions[19].getRb()->addImpulse(force7, Physics::FIXED_STEP_TIME);
+        */
+
+        if(time > 20)
+            Physics::getINSTANCE().setSeparationCoeff(5*(time-20));
+
         if(time > wireStabTime){
-            PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
-            int regionNum = problem->getNumRegions();
 
             //Save wire stability position for each floating region
             for (int i = 0; i < regionNum; ++i) {
@@ -103,6 +170,9 @@ void FloorplanningManager::onPysicsStep() {
             Physics::getINSTANCE().setNoiseSpeedCoeff(10);
             Physics::getINSTANCE().setNoiseModulus(0);
             Physics::getINSTANCE().setWireForceCoeff(0.0);
+            Physics::getINSTANCE().setEnableBarrierCollisions(false);
+            Physics::getINSTANCE().setIoForceMultiplier(1);
+
         }
     }else if(state == FloortplanningMangerState::SEARCH_PLACEM){
         if(time > 20)

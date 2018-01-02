@@ -52,7 +52,7 @@ class PhysicsRegion {
 
     Vector2 preferedAnchorPoint = Vector2(0,0);
 
-    Vector2 wireStabilityPosition = Vector2(0,0);
+    Vector2 wireStabilityPosition;
 
     /** Regions that is interconnected with
      */

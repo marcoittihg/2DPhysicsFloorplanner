@@ -79,7 +79,7 @@ void PhysicsRegion::fixedPhysicsStep() {
 
             IOPos.add(pos);
 
-            IOPos.multiply(Physics::getINSTANCE().getWireForceCoeff() * numWire);
+            IOPos.multiply(Physics::getINSTANCE().getWireForceCoeff() * numWire * Physics::getINSTANCE().getIoForceMultiplier());
 
             rb->addImpulse(IOPos, Physics::FIXED_STEP_TIME);
         }
@@ -163,7 +163,7 @@ void PhysicsRegion::setRegionIO(RegionIOData *regionIO) {
 void PhysicsRegion::resetPositionAndShape() {
     rb->setPosition(Vector2(0,0));
     rb->setSpeed(Vector2(0,0));
-    rb->setDimension(Vector2(1,1));
+    rb->setDimension(Vector2(5,5));
 }
 
 void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
@@ -171,13 +171,16 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
     PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
     int regNum = Physics::getINSTANCE().getRegionNum();
 
+    Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+
     for (int i = 0; i < placementNum; ++i) {
         //For each placement
         float placementMidX = static_cast<float>(feasiblePlacements[i].getStartPosition().get_x() + 0.5 * feasiblePlacements[i].getDimension().get_x());
         float placementMidY = static_cast<float>(feasiblePlacements[i].getStartPosition().get_y() + 0.5 * feasiblePlacements[i].getDimension().get_y());
 
         int wireWeight = FloorplanningManager::getINSTANCE().getProblem()->getWireCost();
-        int areaWeight = FloorplanningManager::getINSTANCE().getProblem()->getWireCost();
+        int areaWeight = FloorplanningManager::getINSTANCE().getProblem()->getAreaCost();
 
         //Set the base score loss as the area score loss
         unsigned int scoreLoss = feasiblePlacements[i].getAreaCost() * areaWeight;
@@ -209,8 +212,8 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
                 regY = intReg->getWireStabilityPosition().getY();
             }
 
-            float xDist = abs(placementMidX - regX);
-            float yDist = abs(placementMidY - regY);
+            float xDist = abs(placementMidX - regX + minusHalfBoardDim.getX());
+            float yDist = abs(placementMidY - regY + minusHalfBoardDim.getY());
 
             scoreLoss += (xDist + yDist) * interconnectedRegionsWeights.at(j) * wireWeight;
         }
@@ -365,7 +368,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
                 w *= 1/regions[regionIndex].getScoreImpactMultiplier();
 
                 if(regions[regionIndex].getRegionState() == PhysicsRegionState::PLACED)
-                    w /= 15;
+                    w /= 20;
 
                 waste.push_back(w);
             }
@@ -415,8 +418,6 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
             prefPlacemnt.getStartPosition().get_y() + prefPlacemnt.getDimension().get_y() * 0.5
     );
 
-    Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
 
     preferedAnchorPoint.add(minusHalfBoardDim);
 
@@ -424,11 +425,11 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
     //Set shape
     rb->setDimension(Vector2(prefPlacemnt.getDimension().get_x(),prefPlacemnt.getDimension().get_y()));
 
-    std::cout<<"Region "<<+regionIndex<<std::endl;
+    /*std::cout<<"Region "<<+regionIndex<<std::endl;
     std::cout<<"Start placement "<<+prefPlacemnt.getStartPosition().get_x()<<" , "<<+prefPlacemnt.getStartPosition().get_y()<<std::endl;
     std::cout<<"Dim placement "<<+prefPlacemnt.getDimension().get_x()<<" , "<<+prefPlacemnt.getDimension().get_y()<<std::endl;
     std::cout<<"Anchor point"<<preferedAnchorPoint.getX()<<" , "<<preferedAnchorPoint.getX()<<std::endl<<std::endl;
-
+*/
 }
 
 void PhysicsRegion::savePositionAsWireStability() {
