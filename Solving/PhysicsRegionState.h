@@ -1,0 +1,17 @@
+//
+// Created by Marco on 30/12/17.
+//
+
+#ifndef BUBBLEREGIONSFLOORPLANNER_PHYSICSREGIONSTATE_H
+#define BUBBLEREGIONSFLOORPLANNER_PHYSICSREGIONSTATE_H
+
+
+#include <cstdint>
+
+enum PhysicsRegionState : uint8_t {
+    PLACED,
+    FLOATING
+};
+
+
+#endif //BUBBLEREGIONSFLOORPLANNER_PHYSICSREGIONSTATE_H
