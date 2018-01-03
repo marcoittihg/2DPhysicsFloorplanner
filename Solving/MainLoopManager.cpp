@@ -21,7 +21,7 @@ void MainLoopManager::startLoop() {
         Physics::getINSTANCE().doStep();
         phyStepCont++;
 
-        if(phyStepCont % 10 == 0) {
+        if(phyStepCont % 100 == 0) {
             Render::getINSTANCE().onUpdateScreeen();
             phyStepCont = 0;
         }

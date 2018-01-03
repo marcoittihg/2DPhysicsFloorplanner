@@ -163,7 +163,57 @@ void PhysicsRegion::setRegionIO(RegionIOData *regionIO) {
 void PhysicsRegion::resetPositionAndShape() {
     rb->setPosition(Vector2(0,0));
     rb->setSpeed(Vector2(0,0));
-    rb->setDimension(Vector2(5,5));
+    rb->setDimension(Vector2(10,10));
+}
+
+unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp){
+
+    Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+
+    float placementMidX = static_cast<float>(fp.getStartPosition().get_x() + 0.5 * fp.getDimension().get_x());
+    float placementMidY = static_cast<float>(fp.getStartPosition().get_y() + 0.5 * fp.getDimension().get_y());
+
+    int wireWeight = FloorplanningManager::getINSTANCE().getProblem()->getWireCost();
+    int areaWeight = FloorplanningManager::getINSTANCE().getProblem()->getAreaCost();
+
+    //Set the base score loss as the area score loss
+    unsigned int scoreLoss = fp.getAreaCost() * areaWeight;
+
+    //Add the score loss of each IO
+    for (int j = 0; j < IONum; ++j) {
+        float xDist = abs(placementMidX - (float) regionIO[j].getPortColumn());
+        float yDist = abs(placementMidY - (float) regionIO[j].getPortRow());
+
+        scoreLoss += (xDist + yDist) * regionIO[j].getNumWires() * wireWeight;
+    }
+
+    //Add the score loss of each interconnected region
+    for (int j = 0; j < interconnectedRegions.size(); ++j) {
+        PhysicsRegion* intReg = interconnectedRegions.at(j);
+
+        float regX, regY;
+
+        if(intReg->getRegionState() == PhysicsRegionState::PLACED){
+            //Get as placement point the actual placed point
+            unsigned short placementIndex = intReg->getPreferdPlacementIndex();
+            FeasiblePlacement intPlacem = intReg->getFeasiblePlacements()[placementIndex];
+
+            regX = static_cast<float>(intPlacem.getStartPosition().get_x() + 0.5 * intPlacem.getDimension().get_x());
+            regY = static_cast<float>(intPlacem.getStartPosition().get_y() + 0.5 * intPlacem.getDimension().get_y());
+        }else{
+            //Get as placement point the point of wire stabilit
+            regX = intReg->getWireStabilityPosition().getX();
+            regY = intReg->getWireStabilityPosition().getY();
+        }
+
+        float xDist = abs(placementMidX - regX + minusHalfBoardDim.getX());
+        float yDist = abs(placementMidY - regY + minusHalfBoardDim.getY());
+
+        scoreLoss += (xDist + yDist) * interconnectedRegionsWeights.at(j) * wireWeight;
+    }
+
+    return scoreLoss;
 }
 
 void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
@@ -176,47 +226,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     for (int i = 0; i < placementNum; ++i) {
         //For each placement
-        float placementMidX = static_cast<float>(feasiblePlacements[i].getStartPosition().get_x() + 0.5 * feasiblePlacements[i].getDimension().get_x());
-        float placementMidY = static_cast<float>(feasiblePlacements[i].getStartPosition().get_y() + 0.5 * feasiblePlacements[i].getDimension().get_y());
-
-        int wireWeight = FloorplanningManager::getINSTANCE().getProblem()->getWireCost();
-        int areaWeight = FloorplanningManager::getINSTANCE().getProblem()->getAreaCost();
-
-        //Set the base score loss as the area score loss
-        unsigned int scoreLoss = feasiblePlacements[i].getAreaCost() * areaWeight;
-
-        //Add the score loss of each IO
-        for (int j = 0; j < IONum; ++j) {
-            float xDist = abs(placementMidX - (float) regionIO[j].getPortColumn());
-            float yDist = abs(placementMidY - (float) regionIO[j].getPortRow());
-
-            scoreLoss += (xDist + yDist) * regionIO[j].getNumWires() * wireWeight;
-        }
-
-        //Add the score loss of each interconnected region
-        for (int j = 0; j < interconnectedRegions.size(); ++j) {
-            PhysicsRegion* intReg = interconnectedRegions.at(j);
-
-            float regX, regY;
-
-            if(intReg->getRegionState() == PhysicsRegionState::PLACED){
-                //Get as placement point the actual placed point
-                unsigned short placementIndex = intReg->getPreferdPlacementIndex();
-                FeasiblePlacement intPlacem = intReg->getFeasiblePlacements()[placementIndex];
-
-                regX = static_cast<float>(intPlacem.getStartPosition().get_x() + 0.5 * intPlacem.getDimension().get_x());
-                regY = static_cast<float>(intPlacem.getStartPosition().get_y() + 0.5 * intPlacem.getDimension().get_y());
-            }else{
-                //Get as placement point the point of wire stabilit
-                regX = intReg->getWireStabilityPosition().getX();
-                regY = intReg->getWireStabilityPosition().getY();
-            }
-
-            float xDist = abs(placementMidX - regX + minusHalfBoardDim.getX());
-            float yDist = abs(placementMidY - regY + minusHalfBoardDim.getY());
-
-            scoreLoss += (xDist + yDist) * interconnectedRegionsWeights.at(j) * wireWeight;
-        }
+        unsigned int scoreLoss = evaluatePlacement(feasiblePlacements[i]);
 
         feasiblePlacements[i].setScoreLoss(scoreLoss);
     }
@@ -234,17 +244,19 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
         //Check if the placement overlapp with a previous taken region
         bool found = false;
         for (int k = 0; k < regNum; ++k) {
-            if(k == regionIndex || isStart)
-                continue;
+            if(regions[k].getRegionState() == PhysicsRegionState::PLACED) {
+                if (k == regionIndex || isStart)
+                    continue;
 
-            int takenPlacementIndex = regions[k].getPreferdPlacementIndex();
-            if(FeasiblePlacement::checkCollision(
-                    &feasiblePlacements[i],
-                    &regions[k].getFeasiblePlacements()[takenPlacementIndex],
-                    FloorplanningManager::getINSTANCE().getProblem()->getBoard()->getTileHeight())){
+                int takenPlacementIndex = regions[k].getPreferdPlacementIndex();
+                if (FeasiblePlacement::checkCollision(
+                        &feasiblePlacements[i],
+                        &regions[k].getFeasiblePlacements()[takenPlacementIndex],
+                        FloorplanningManager::getINSTANCE().getProblem()->getBoard()->getTileHeight())) {
 
-                found = true;
-                break;
+                    found = true;
+                    break;
+                }
             }
         }
 
@@ -367,8 +379,6 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
                 }
                 w *= 1/regions[regionIndex].getScoreImpactMultiplier();
 
-                if(regions[regionIndex].getRegionState() == PhysicsRegionState::PLACED)
-                    w /= 20;
 
                 waste.push_back(w);
             }
@@ -378,6 +388,12 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
             for (int m = 0; m < waste.size(); ++m) {
                 avgWaste+=waste.at(m);
             }
+            for (int l = 0; l < regIndexes.size(); ++l) {
+                int regionIndex = regIndexes.at(l);
+                if(regions[regionIndex].getRegionState() == PhysicsRegionState::PLACED)
+                    avgWaste /= 2;
+            }
+
             avgWaste /= (int)waste.size();
             avgWaste = avgWaste <= 0 ? 1 : avgWaste;
             unsigned int a = static_cast<unsigned int>(avgWaste);

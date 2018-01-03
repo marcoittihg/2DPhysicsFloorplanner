@@ -136,6 +136,8 @@ public:
     float getScoreImpactMultiplier() const;
 
     void setScoreImpactMultiplier(float scoreImpactMultiplier);
+
+    unsigned int evaluatePlacement(FeasiblePlacement fp);
 };
 
 

@@ -230,7 +230,7 @@ int main() {
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10006");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10016");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -238,7 +238,7 @@ int main() {
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
     getAllFeasiblePlacements(&feasiblePlacements, problem);
 
-    //FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10021Regions.txt",&feasiblePlacements);
+    //FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10011Regions.txt",&feasiblePlacements);
     FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
 
     //Create regions
@@ -332,7 +332,7 @@ int main() {
 
         Point2D boardDim = problem->getBoard()->getDimension();
         float wireCostCoff = std::sqrt(boardDim.get_x() * boardDim.get_x() + boardDim.get_y() * boardDim.get_y());
-        wireCostCoff *= 0.3333;
+        wireCostCoff *= 0.15;
 
         wireScore *= wireCostCoff;
 
@@ -343,9 +343,8 @@ int main() {
 
     for (int l = 0; l < numRegions; ++l) {
         regions[l].setScoreImpactMultiplier(regions[l].getScoreImpactMultiplier() / totCost * numRegions );
-
+        regions[l].setScoreImpactMultiplier(std::exp((regions[l].getScoreImpactMultiplier()-1)));
     }
-
 
     Physics::getINSTANCE().setBoard(problem->getBoard());
 

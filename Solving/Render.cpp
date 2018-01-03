@@ -162,7 +162,7 @@ void Render::onUpdateScreeen() {
             intercRegionPos = worldPointToScreen(intercRegionPos);
 
 
-            glColor4f(1,1,1,0.5);
+            glColor4f(1,1,1,0.3);
             glBegin(GL_LINE_STRIP);
             glVertex3f(regionPos.getX(), regionPos.getY(),0);
             glVertex3f(intercRegionPos.getX(), intercRegionPos.getY(), 0);
