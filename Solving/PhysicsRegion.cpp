@@ -4,7 +4,7 @@
 
 #include "PhysicsRegion.h"
 #include "FloorplanningManager.h"
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <random>
 
@@ -163,7 +163,7 @@ void PhysicsRegion::setRegionIO(RegionIOData *regionIO) {
 void PhysicsRegion::resetPositionAndShape() {
     rb->setPosition(Vector2(0,0));
     rb->setSpeed(Vector2(0,0));
-    rb->setDimension(Vector2(10,10));
+    rb->setDimension(Vector2(6,6));
 }
 
 unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp){
@@ -194,7 +194,7 @@ unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp){
 
         float regX, regY;
 
-        if(intReg->getRegionState() == PhysicsRegionState::PLACED){
+        if(false){
             //Get as placement point the actual placed point
             unsigned short placementIndex = intReg->getPreferdPlacementIndex();
             FeasiblePlacement intPlacem = intReg->getFeasiblePlacements()[placementIndex];
@@ -297,6 +297,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
             //For each region prefered placement evaluate the wasted resources
             FeasiblePlacement fp = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
 
+
             for (int i = 0; i < fp.getDimension().get_x(); ++i) {
                 for (int k = 0; k < fp.getDimension().get_y(); ++k) {
                     Block block = board->getBlockMatrix(fp.getStartPosition().get_y() + k, fp.getStartPosition().get_x() + i);
@@ -322,6 +323,14 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
         for (int i = 0; i < placementNum; ++i) {
             //For each placement
             FeasiblePlacement fp = feasiblePlacements[i];
+
+            float fpMidX = static_cast<float>(fp.getStartPosition().get_x() + 0.5 * fp.getDimension().get_x());
+            float fpMidY = static_cast<float>(fp.getStartPosition().get_y() + 0.5 * fp.getDimension().get_y());
+
+            Vector2 distance = Vector2(fpMidX, fpMidY);
+            distance.multiply(-1);
+            distance.add(regions[regionIndex].getWireStabilityPosition());
+
             Resources resources;
             resources.DSP = resources.CLB = resources.BRAM = 0;
 
@@ -424,10 +433,17 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
     }
 
     preferdPlacementIndex = index;
-
-    anchorForceMultiplier = 1 + (1 - index / placementNum);
-
     FeasiblePlacement prefPlacemnt = feasiblePlacements[index];
+
+    Vector2 stabPoint = wireStabilityPosition;
+    stabPoint.multiply(-1);
+    float pMidX = static_cast<float>(prefPlacemnt.getStartPosition().get_x() + 0.5 * prefPlacemnt.getDimension().get_x());
+    float pMidY = static_cast<float>(prefPlacemnt.getStartPosition().get_y() + 0.5 * prefPlacemnt.getDimension().get_y());
+
+    stabPoint.add(Vector2(pMidX, pMidY));
+
+    anchorForceMultiplier = 1 + 1000 * (1 - (float)index / (float)placementNum) / stabPoint.mangnitude();
+
 
     preferedAnchorPoint = Vector2(
             prefPlacemnt.getStartPosition().get_x() + prefPlacemnt.getDimension().get_x() * 0.5,

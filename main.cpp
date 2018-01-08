@@ -1,12 +1,9 @@
 #include <iostream>
 #include "Solving/PhysicsRegion.h"
-#include "Solving/Render.h"
 #include "Data/ProblemData/Problem.h"
 #include "FileManagement/FileManager.h"
 #include "Solving/MainLoopManager.h"
 #include "Solving/FloorplanningManager.h"
-#include <GLFW/glfw3.h>
-#include <unistd.h>
 #include <list>
 #include <cmath>
 
@@ -230,16 +227,47 @@ int main() {
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10016");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10008");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
 
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
-    getAllFeasiblePlacements(&feasiblePlacements, problem);
+    //getAllFeasiblePlacements(&feasiblePlacements, problem);
 
-    //FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10011Regions.txt",&feasiblePlacements);
-    FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
+    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10008Regions.txt",&feasiblePlacements);
+    //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
+
+    //Keep only best regions by area
+    for (int i = 0; i < feasiblePlacements.size(); ++i) {
+        std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
+
+        //Search for best area value
+        int bestAreaValue = std::numeric_limits<unsigned short>::max();
+        for (int j = 0; j < placementVector.size(); ++j) {
+            FeasiblePlacement fp = placementVector.at(j);
+
+            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
+
+            if(area < bestAreaValue){
+                bestAreaValue = area;
+            }
+
+        }
+
+        //Eliminate placements with area bigger than bestAreaValue + 50%
+        for (int k = 0; k < feasiblePlacements.at(i).size(); ++k) {
+            FeasiblePlacement fp = feasiblePlacements.at(i).at(k);
+
+            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
+
+            if(area > bestAreaValue * 1.15) {
+                feasiblePlacements.at(i).erase(feasiblePlacements.at(i).begin() + k);
+                k--;
+            }
+        }
+
+    }
 
     //Create regions
     PhysicsRegion* region;
@@ -343,7 +371,7 @@ int main() {
 
     for (int l = 0; l < numRegions; ++l) {
         regions[l].setScoreImpactMultiplier(regions[l].getScoreImpactMultiplier() / totCost * numRegions );
-        regions[l].setScoreImpactMultiplier(std::exp((regions[l].getScoreImpactMultiplier()-1)));
+        regions[l].setScoreImpactMultiplier(1);
     }
 
     Physics::getINSTANCE().setBoard(problem->getBoard());
