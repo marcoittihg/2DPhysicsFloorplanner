@@ -12,7 +12,7 @@
 
 void FloorplanningManager::start() {
     time = 0;
-    wireStabTime = 250.0;
+    wireStabTime = 150.0;
     closestAlternativeRefreshTime = 80.0;
     lastAlternativeRefreshTime = 0.0;
 
@@ -21,7 +21,7 @@ void FloorplanningManager::start() {
 }
 
 void FloorplanningManager::onPysicsStep() {
-    time += Physics::FIXED_STEP_TIME;
+    time += Physics::getINSTANCE().getFIXED_STEP_TIME();
 
     if(state == FloortplanningMangerState::START){
         //Check how many floating regions there are
@@ -33,6 +33,14 @@ void FloorplanningManager::onPysicsStep() {
         for (int i = 0; i < regionNum; ++i) {
             if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
                 regions[i].resetPositionAndShape();
+                unsigned short blockNum = static_cast<unsigned short>(
+                        problem->getFloorplanProblemRegion(i)->getDSPNum() +
+                        problem->getFloorplanProblemRegion(i)->getCLBNum() +
+                        problem->getFloorplanProblemRegion(i)->getCLBNum());
+
+                float radius = 1.15 * std::sqrt(blockNum / M_PI);
+
+                regions[i].getRb()->setDimension(Vector2(radius,radius));
                 floatingReg++;
             }
         }
@@ -76,10 +84,12 @@ void FloorplanningManager::onPysicsStep() {
         }else{
             //Change state for next iteration
             state = FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY;
-            Physics::getINSTANCE().setWireForceCoeff(0.1);
+            Physics::getINSTANCE().setWireForceCoeff(1);
             Physics::getINSTANCE().setEnableBarrierCollisions(true);
             time = 0;
-            Physics::getINSTANCE().setIoForceMultiplier(50);
+            Physics::getINSTANCE().setIoForceMultiplier(1);
+            Physics::getINSTANCE().setEnableRegionCollisions(false);
+            Physics::getINSTANCE().setFIXED_STEP_TIME(0.01);
         }
     } else if(state == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
         PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
@@ -87,10 +97,9 @@ void FloorplanningManager::onPysicsStep() {
 
 
         if(time > 20)
-            Physics::getINSTANCE().setSeparationCoeff(5*(time-20));
+            Physics::getINSTANCE().setSeparationCoeff(30*(time-20));
 
         if(time > wireStabTime){
-
             //Save wire stability position for each floating region
             for (int i = 0; i < regionNum; ++i) {
                 if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
@@ -103,8 +112,11 @@ void FloorplanningManager::onPysicsStep() {
                 if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
                     //If the region is floating evaluate the new placement and shape
                     regions[i].evaluatePlacementAndShape(true);
+                    regions[i].getRb()->setPosition(regions[i].getPreferedAnchorPoint());
+                    regions[i].getRb()->setSpeed(Vector2(0,0));
                 }
             }
+
 
             //Go to search placement state
             time = 0;
@@ -114,8 +126,11 @@ void FloorplanningManager::onPysicsStep() {
             Physics::getINSTANCE().setWireForceCoeff(0.0);
             Physics::getINSTANCE().setEnableBarrierCollisions(false);
             Physics::getINSTANCE().setIoForceMultiplier(1);
-
+            Physics::getINSTANCE().setEnableRegionCollisions(true);
+            Physics::getINSTANCE().setFIXED_STEP_TIME(0.05);
+            Physics::getINSTANCE().setLinearDrag(0.05);
         }
+
     }else if(state == FloortplanningMangerState::SEARCH_PLACEM){
         if(time > 40)
             Physics::getINSTANCE().setSeparationCoeff((time-40));
@@ -283,6 +298,8 @@ void FloorplanningManager::onPysicsStep() {
                     continue;
 
                 regions[k].evaluatePlacementAndShape(false);
+                regions[k].getRb()->setPosition(regions[k].getPreferedAnchorPoint());
+                regions[k].getRb()->setSpeed(Vector2(0,0));
             }
 
             //Check if there is at least one floating region

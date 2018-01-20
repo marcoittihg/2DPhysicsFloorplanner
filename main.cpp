@@ -227,7 +227,7 @@ int main() {
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10008");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10020");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -235,7 +235,7 @@ int main() {
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
     //getAllFeasiblePlacements(&feasiblePlacements, problem);
 
-    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10008Regions.txt",&feasiblePlacements);
+    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt",&feasiblePlacements);
     //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
 
     //Keep only best regions by area
@@ -252,21 +252,19 @@ int main() {
             if(area < bestAreaValue){
                 bestAreaValue = area;
             }
-
         }
 
-        //Eliminate placements with area bigger than bestAreaValue + 50%
+        //Eliminate placements with area bigger than bestAreaValue + x%
         for (int k = 0; k < feasiblePlacements.at(i).size(); ++k) {
             FeasiblePlacement fp = feasiblePlacements.at(i).at(k);
 
             unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
 
-            if(area > bestAreaValue * 1.15) {
+            if(area > bestAreaValue * 1.3) {
                 feasiblePlacements.at(i).erase(feasiblePlacements.at(i).begin() + k);
                 k--;
             }
         }
-
     }
 
     //Create regions

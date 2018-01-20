@@ -50,8 +50,41 @@ void PhysicsRegion::fixedPhysicsStep() {
     halfBoardDim.multiply(-1);
 
     Vector2 pos = rb->getPosition();
-
     pos.multiply(-1);
+
+    FloortplanningMangerState floorplanningState = FloorplanningManager::getINSTANCE().getState();
+
+    if(floorplanningState == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
+        //If a region is inside the radius of the circle the other region take the separation force
+        PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
+
+        float r1 = rb->getDimension().getX();
+        float sqr1 = r1 * r1;
+
+        for (int i = 0; i < Physics::getINSTANCE().getRegionNum(); ++i) {
+            Vector2 distanceVector = regions[i].getRb()->getPosition();
+            distanceVector.add(pos);
+
+            float sqDistance = distanceVector.sqrMagnitude();
+
+            if(sqDistance == 0)
+                continue;
+
+            float r2 = regions[i].getRb()->getDimension().getX();
+            float sqr2 = r2 * r2;
+
+            if(sqDistance < sqr1 + sqr2 + 2 * r1 * r2){
+                //The two regions are in collision
+                float penetrDepth = -(distanceVector.mangnitude() - r1 - r2);
+
+                distanceVector.normalize();
+                distanceVector.multiply(penetrDepth * Physics::getINSTANCE().getSeparationCoeff());
+                Vector2 force = distanceVector;
+
+                regions[i].getRb()->addImpulse(force, Physics::getINSTANCE().getFIXED_STEP_TIME());
+            }
+        }
+    }
 
     if(regionType == PhysicsRegionType::IO_INT || regionType == PhysicsRegionType::NOIO_INT) {
         //IF the region have interc
@@ -63,7 +96,7 @@ void PhysicsRegion::fixedPhysicsStep() {
 
             int numWire = interconnectedRegionsWeights.at(i);
             intercPos.multiply(Physics::getINSTANCE().getWireForceCoeff() * numWire);
-            rb->addImpulse(intercPos, Physics::FIXED_STEP_TIME);
+            rb->addImpulse(intercPos, Physics::getINSTANCE().getFIXED_STEP_TIME());
         }
     }
 
@@ -81,25 +114,24 @@ void PhysicsRegion::fixedPhysicsStep() {
 
             IOPos.multiply(Physics::getINSTANCE().getWireForceCoeff() * numWire * Physics::getINSTANCE().getIoForceMultiplier());
 
-            rb->addImpulse(IOPos, Physics::FIXED_STEP_TIME);
+            rb->addImpulse(IOPos, Physics::getINSTANCE().getFIXED_STEP_TIME());
         }
     }
 
 
-    //Add best and closest anchor forces
+    //Add best anchor forces
     Vector2 bestAnchor = preferedAnchorPoint;
     bestAnchor.add(pos);
 
     //Calculate distance from pref anchor
     float dist = bestAnchor.mangnitude() + 1;
 
-
-    bestAnchor.multiply(Physics::getINSTANCE().getPreferedAnchorCoeff() * anchorForceMultiplier * scoreImpactMultiplier / dist);
+    bestAnchor.multiply(Physics::getINSTANCE().getPreferedAnchorCoeff() * anchorForceMultiplier * scoreImpactMultiplier);
 
     Vector2 force = bestAnchor;
     //force.add(altAnchor);
 
-    rb->addImpulse(force, Physics::FIXED_STEP_TIME);
+    rb->addImpulse(force, Physics::getINSTANCE().getFIXED_STEP_TIME());
 }
 
 PhysicsRegion::PhysicsRegion() {
@@ -163,7 +195,7 @@ void PhysicsRegion::setRegionIO(RegionIOData *regionIO) {
 void PhysicsRegion::resetPositionAndShape() {
     rb->setPosition(Vector2(0,0));
     rb->setSpeed(Vector2(0,0));
-    rb->setDimension(Vector2(6,6));
+    rb->setDimension(Vector2(1,1));
 }
 
 unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp){
@@ -375,8 +407,10 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
                 int regionIndex = regIndexes.at(l);
                 int w = res[regionIndex].DSP - resources.DSP
                         + res[regionIndex].BRAM - resources.BRAM
-                        + res[regionIndex].CLB - resources.CLB;
+                        + res[regionIndex].CLB - resources.CLB
+                        ;
 
+                /*
                 if(res[regionIndex].DSP >= region->getDSPNum()){
                     w*=2;
                 }
@@ -385,8 +419,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
                 }
                 if(res[regionIndex].BRAM >= region->getBRAMNum()){
                     w*=2;
-                }
-                w *= 1/regions[regionIndex].getScoreImpactMultiplier();
+                }*/
 
 
                 waste.push_back(w);
@@ -396,11 +429,6 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
             int avgWaste = 0;
             for (int m = 0; m < waste.size(); ++m) {
                 avgWaste+=waste.at(m);
-            }
-            for (int l = 0; l < regIndexes.size(); ++l) {
-                int regionIndex = regIndexes.at(l);
-                if(regions[regionIndex].getRegionState() == PhysicsRegionState::PLACED)
-                    avgWaste /= 2;
             }
 
             avgWaste /= (int)waste.size();
@@ -442,17 +470,18 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     stabPoint.add(Vector2(pMidX, pMidY));
 
-    anchorForceMultiplier = 1 + 1000 * (1 - (float)index / (float)placementNum) / stabPoint.mangnitude();
+    //anchorForceMultiplier = 1 + 500 * (1 - (float)index / (float)placementNum) / stabPoint.mangnitude();
 
+    anchorForceMultiplier = 1
+                            + 10 / stabPoint.mangnitude()
+                            + 100 / (float)placementNum;
 
     preferedAnchorPoint = Vector2(
             prefPlacemnt.getStartPosition().get_x() + prefPlacemnt.getDimension().get_x() * 0.5,
             prefPlacemnt.getStartPosition().get_y() + prefPlacemnt.getDimension().get_y() * 0.5
     );
 
-
     preferedAnchorPoint.add(minusHalfBoardDim);
-
 
     //Set shape
     rb->setDimension(Vector2(prefPlacemnt.getDimension().get_x(),prefPlacemnt.getDimension().get_y()));

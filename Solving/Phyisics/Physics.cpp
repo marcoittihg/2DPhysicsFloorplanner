@@ -16,8 +16,9 @@ void Physics::onStart() {
     noiseSpeedCoeff = 0;
     noiseModulus = 0;
     noiseStepDir = Vector2(0,1);
+    FIXED_STEP_TIME = 0.02;
     enableBarrierCollisions = false;
-
+    enableRegionCollisions = true;
 }
 
 void Physics::doStep() {
@@ -26,8 +27,9 @@ void Physics::doStep() {
         physicsRegions[i].fixedPhysicsStep();
     }
 
+
     //calculate collisions and apply separation forces
-    for (int i = 0; i < regionNum; ++i) {
+    for (int i = 0; i < regionNum && isEnableRegionCollisions(); ++i) {
         Rigidbody r1 = rigidbodies[i];
         FeasiblePlacement prefPlac1 = physicsRegions[i].getFeasiblePlacements()[physicsRegions[i].getPreferdPlacementIndex()];
         for (int j = i + 1; j < regionNum; ++j) {
@@ -86,6 +88,7 @@ void Physics::doStep() {
         }
     }
 
+    /*
     //Update and apply noise
     Vector2 noiseStep = noiseStepDir;
     noiseStep.multiply(noiseSpeedCoeff * FIXED_STEP_TIME);
@@ -111,7 +114,7 @@ void Physics::doStep() {
             continue;
 
         rigidbodies[i].addImpulse(tmpNoise, FIXED_STEP_TIME);
-    }
+    }*/
 
 
     //Move the regions
@@ -182,17 +185,15 @@ PhysicsRegion* Physics::addRegion() {
         newRB[i].setDimension(rigidbodies[i].getDimension());
 
         newReg[i].setRegionIndex(physicsRegions[i].getRegionIndex());
-        newReg[i].setRegionState( physicsRegions[i].getRegionState());
-        newReg[i].setPreferedAnchorPoint( physicsRegions[i].getPreferedAnchorPoint());
-        newReg[i].setRegionType( physicsRegions[i].getRegionType());
-        newReg[i].setRegionState( physicsRegions[i].getRegionState());
+        newReg[i].setRegionState(physicsRegions[i].getRegionState());
+        newReg[i].setPreferedAnchorPoint(physicsRegions[i].getPreferedAnchorPoint());
+        newReg[i].setRegionType(physicsRegions[i].getRegionType());
+        newReg[i].setRegionState(physicsRegions[i].getRegionState());
         newReg[i].setInterconnectedRegions(physicsRegions[i].getInterconnectedRegions());
         newReg[i].setFeasiblePlacements(physicsRegions[i].getFeasiblePlacements());
         newReg[i].setIONum(physicsRegions[i].getIONum());
         newReg[i].setRegionIO(physicsRegions[i].getRegionIO());
         newReg[i].setPlacementNum(physicsRegions[i].getPlacementNum());
-
-
     }
 
     delete[] rigidbodies;
@@ -279,3 +280,24 @@ float Physics::getIoForceMultiplier() const {
 void Physics::setIoForceMultiplier(float ioForceMultiplier) {
     Physics::ioForceMultiplier = ioForceMultiplier;
 }
+
+bool Physics::isEnableRegionCollisions() const {
+    return enableRegionCollisions;
+}
+
+void Physics::setEnableRegionCollisions(bool enableRegionCollisions) {
+    Physics::enableRegionCollisions = enableRegionCollisions;
+}
+
+float Physics::getSeparationCoeff() const {
+    return separationCoeff;
+}
+
+void Physics::setFIXED_STEP_TIME(float FIXED_STEP_TIME) {
+    Physics::FIXED_STEP_TIME = FIXED_STEP_TIME;
+}
+
+float Physics::getFIXED_STEP_TIME() const {
+    return FIXED_STEP_TIME;
+}
+

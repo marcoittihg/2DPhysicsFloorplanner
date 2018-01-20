@@ -21,7 +21,7 @@ class Physics {
 public:
     /** Step time between each step of the physics
      */
-    static constexpr float FIXED_STEP_TIME = 0.02;
+    float FIXED_STEP_TIME;
 
     static Physics& getINSTANCE(){
         static Physics physics;
@@ -75,7 +75,7 @@ private:
 
     /** Linear drag for step for each region
      */
-    float linearDrag = 0.05;
+    float linearDrag = 0.01;
 
     /** Maximum modulus of the noise
      */
@@ -94,7 +94,10 @@ private:
     Vector2 noiseStepDir;
 
     bool enableBarrierCollisions;
+
+    bool enableRegionCollisions;
 public:
+
     /** Called at the start of the simulation
      */
     void onStart();
@@ -103,6 +106,7 @@ public:
      *  and after that update the positions
      */
     void doStep();
+
 
     /**
      * Adds a region to the physics simulation
@@ -146,6 +150,16 @@ public:
     float getIoForceMultiplier() const;
 
     void setIoForceMultiplier(float ioForceMultiplier);
+
+    bool isEnableRegionCollisions() const;
+
+    void setEnableRegionCollisions(bool enableRegionCollisions);
+
+    float getSeparationCoeff() const;
+
+    void setFIXED_STEP_TIME(float FIXED_STEP_TIME);
+
+    float getFIXED_STEP_TIME() const;
 };
 
 

@@ -12,7 +12,7 @@
 /** Render the state of the regions and the board
  */
 class Render {
-    static constexpr int ZOOM_LVL = 16;
+    static constexpr int ZOOM_LVL = 70;
 
 public:
     static Render& getINSTANCE(){
