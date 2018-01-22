@@ -198,7 +198,7 @@ void PhysicsRegion::resetPositionAndShape() {
     rb->setDimension(Vector2(1,1));
 }
 
-unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp){
+unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp, bool isLastStep){
 
     Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
     Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
@@ -226,13 +226,13 @@ unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp){
 
         float regX, regY;
 
-        if(false){
+        if(isLastStep){
             //Get as placement point the actual placed point
             unsigned short placementIndex = intReg->getPreferdPlacementIndex();
             FeasiblePlacement intPlacem = intReg->getFeasiblePlacements()[placementIndex];
+            regX = static_cast<float>(intPlacem.getStartPosition().get_x() + 0.5 * intPlacem.getDimension().get_x() + minusHalfBoardDim.getX());
+            regY = static_cast<float>(intPlacem.getStartPosition().get_y() + 0.5 * intPlacem.getDimension().get_y() + minusHalfBoardDim.getY());
 
-            regX = static_cast<float>(intPlacem.getStartPosition().get_x() + 0.5 * intPlacem.getDimension().get_x());
-            regY = static_cast<float>(intPlacem.getStartPosition().get_y() + 0.5 * intPlacem.getDimension().get_y());
         }else{
             //Get as placement point the point of wire stabilit
             regX = intReg->getWireStabilityPosition().getX();
@@ -258,7 +258,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     for (int i = 0; i < placementNum; ++i) {
         //For each placement
-        unsigned int scoreLoss = evaluatePlacement(feasiblePlacements[i]);
+        unsigned int scoreLoss = evaluatePlacement(feasiblePlacements[i], false);
 
         feasiblePlacements[i].setScoreLoss(scoreLoss);
     }
@@ -473,7 +473,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
     //anchorForceMultiplier = 1 + 500 * (1 - (float)index / (float)placementNum) / stabPoint.mangnitude();
 
     anchorForceMultiplier = 1
-                            + 10 / stabPoint.mangnitude()
+                            + 10 / (stabPoint.mangnitude()+0.1)
                             + 100 / (float)placementNum;
 
     preferedAnchorPoint = Vector2(

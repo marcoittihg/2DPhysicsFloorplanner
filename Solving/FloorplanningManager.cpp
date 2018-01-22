@@ -48,6 +48,76 @@ void FloorplanningManager::onPysicsStep() {
         if(floatingReg == 0) {
             state = FloortplanningMangerState::END;
 
+            bool improved = true;
+            while(improved) {
+                improved = false;
+                for (int m = 0; m < regionNum; ++m) {
+                    if (regions[m].getRegionState() != PhysicsRegionState::PLACED)
+                        continue;
+
+                    FeasiblePlacement nowPlacement = regions[m].getFeasiblePlacements()[regions[m].getPreferdPlacementIndex()];
+                    unsigned int nowScore = regions[m].evaluatePlacement(nowPlacement, true);
+                    unsigned int bestScore = nowScore;
+                    int index = -1;
+
+                    for (int i = 0; i < regions[m].getPlacementNum(); ++i) {
+                        FeasiblePlacement placement = regions[m].getFeasiblePlacements()[i];
+
+                        //Check if the placement overlap with the taken placement of an other placed regions
+                        bool found = false;
+                        for (int j = 0; j < regionNum; ++j) {
+                            if (j == m || regions[j].getRegionState() != PhysicsRegionState::PLACED)
+                                continue;
+
+                            FeasiblePlacement otherFP = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
+                            if (FeasiblePlacement::checkCollision(&placement, &otherFP,
+                                                                  Physics::getINSTANCE().getBoard()->getTileHeight())) {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found)
+                            continue;
+
+                        unsigned int score = regions[m].evaluatePlacement(placement, true);
+
+                        if (score < bestScore) {
+                            bestScore = score;
+                            index = i;
+                        }
+                    }
+
+                    if (bestScore < nowScore) {
+                        //Found a better placement
+                        FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
+
+                        Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_y() / 2,
+                                                            -(float) boardDim.get_x() / 2);
+
+                        Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),
+                                                    newPlacement.getStartPosition().get_y());
+                        regionPos.add(minusHalfBoardDim);
+
+                        Vector2 halfDim = Vector2((float) newPlacement.getDimension().get_x() * 0.5,
+                                                  (float) newPlacement.getDimension().get_y() * 0.5);
+                        regionPos.add(halfDim);
+
+                        regions[m].getRb()->setPosition(regionPos);
+                        regions[m].getRb()->setDimension(
+                                Vector2(newPlacement.getDimension().get_x(), newPlacement.getDimension().get_y()));
+
+                        regions[m].setPreferdPlacementIndex(index);
+                        regions[m].setPreferedAnchorPoint(regionPos);
+
+                        improved = true;
+                    }
+
+
+                }
+            }
+
             //Print the solution
             std::cout<<"Solution: "<<std::endl;
             for (int i = 0; i < regionNum; ++i) {
@@ -127,8 +197,8 @@ void FloorplanningManager::onPysicsStep() {
             Physics::getINSTANCE().setEnableBarrierCollisions(false);
             Physics::getINSTANCE().setIoForceMultiplier(1);
             Physics::getINSTANCE().setEnableRegionCollisions(true);
-            Physics::getINSTANCE().setFIXED_STEP_TIME(0.05);
-            Physics::getINSTANCE().setLinearDrag(0.05);
+            Physics::getINSTANCE().setFIXED_STEP_TIME(0.04);
+            Physics::getINSTANCE().setLinearDrag(0.01);
         }
 
     }else if(state == FloortplanningMangerState::SEARCH_PLACEM){
@@ -137,7 +207,7 @@ void FloorplanningManager::onPysicsStep() {
         else{
             Physics::getINSTANCE().setSeparationCoeff(0);
         }
-        Physics::getINSTANCE().setPreferedAnchorCoeff(10*sqrt(time));
+        Physics::getINSTANCE().setPreferedAnchorCoeff(5*time);
         //Physics::getINSTANCE().setClosestAnchorCoeff(sqrt(time));
         //Physics::getINSTANCE().setNoiseModulus(sqrt(time));
 
@@ -233,63 +303,74 @@ void FloorplanningManager::onPysicsStep() {
             }
 
             //For every placed region check if is available a better and free placement
-            for (int m = 0; m < regionNum; ++m) {
-                if(regions[m].getRegionState() != PhysicsRegionState::PLACED)
-                    continue;
+            bool improved = true;
+            while(improved) {
+                improved = false;
+                for (int m = 0; m < regionNum; ++m) {
+                    if (regions[m].getRegionState() != PhysicsRegionState::PLACED)
+                        continue;
 
-                FeasiblePlacement nowPlacement = regions[m].getFeasiblePlacements()[regions[m].getPreferdPlacementIndex()];
-                unsigned int nowScore = regions[m].evaluatePlacement(nowPlacement);
-                unsigned int bestScore = nowScore;
-                int index = -1;
+                    FeasiblePlacement nowPlacement = regions[m].getFeasiblePlacements()[regions[m].getPreferdPlacementIndex()];
+                    unsigned int nowScore = regions[m].evaluatePlacement(nowPlacement, false);
+                    unsigned int bestScore = nowScore;
+                    int index = -1;
 
-                for (int i = 0; i < regions[m].getPlacementNum(); ++i) {
-                    FeasiblePlacement placement = regions[m].getFeasiblePlacements()[i];
+                    for (int i = 0; i < regions[m].getPlacementNum(); ++i) {
+                        FeasiblePlacement placement = regions[m].getFeasiblePlacements()[i];
 
-                    //Check if the placement overlap with the taken placement of an other placed regions
-                    bool found = false;
-                    for (int j = 0; j < regionNum; ++j) {
-                        if(j == m || regions[j].getRegionState() != PhysicsRegionState::PLACED)
+                        //Check if the placement overlap with the taken placement of an other placed regions
+                        bool found = false;
+                        for (int j = 0; j < regionNum; ++j) {
+                            if (j == m || regions[j].getRegionState() != PhysicsRegionState::PLACED)
+                                continue;
+
+                            FeasiblePlacement otherFP = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
+                            if (FeasiblePlacement::checkCollision(&placement, &otherFP,
+                                                                  Physics::getINSTANCE().getBoard()->getTileHeight())) {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found)
                             continue;
 
-                        FeasiblePlacement otherFP = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
-                        if(FeasiblePlacement::checkCollision(&placement, &otherFP, Physics::getINSTANCE().getBoard()->getTileHeight())){
-                            found = true;
-                            break;
+                        unsigned int score = regions[m].evaluatePlacement(placement, false);
+
+                        if (score < bestScore) {
+                            bestScore = score;
+                            index = i;
                         }
                     }
 
-                    if(found)
-                        continue;
+                    if (bestScore < nowScore) {
+                        //Found a better placement
+                        FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
 
-                    unsigned int score = regions[m].evaluatePlacement(placement);
+                        Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_y() / 2,
+                                                            -(float) boardDim.get_x() / 2);
 
-                    if(score < bestScore){
-                        bestScore = score;
-                        index = i;
+                        Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),
+                                                    newPlacement.getStartPosition().get_y());
+                        regionPos.add(minusHalfBoardDim);
+
+                        Vector2 halfDim = Vector2((float) newPlacement.getDimension().get_x() * 0.5,
+                                                  (float) newPlacement.getDimension().get_y() * 0.5);
+                        regionPos.add(halfDim);
+
+                        regions[m].getRb()->setPosition(regionPos);
+                        regions[m].getRb()->setDimension(
+                                Vector2(newPlacement.getDimension().get_x(), newPlacement.getDimension().get_y()));
+
+                        regions[m].setPreferdPlacementIndex(index);
+                        regions[m].setPreferedAnchorPoint(regionPos);
+
+                        improved = true;
                     }
+
+
                 }
-
-                if(bestScore < nowScore){
-                    //Found a better placement
-                    FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
-
-                    Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-                    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
-
-                    Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),newPlacement.getStartPosition().get_y());
-                    regionPos.add(minusHalfBoardDim);
-
-                    Vector2 halfDim = Vector2((float)newPlacement.getDimension().get_x() * 0.5, (float)newPlacement.getDimension().get_y() * 0.5);
-                    regionPos.add(halfDim);
-
-                    regions[m].getRb()->setPosition(regionPos);
-                    regions[m].getRb()->setDimension(Vector2(newPlacement.getDimension().get_x(), newPlacement.getDimension().get_y()));
-
-                    regions[m].setPreferdPlacementIndex(index);
-                    regions[m].setPreferedAnchorPoint(regionPos);
-                }
-
-
             }
 
             //For every non placed region evaluate its prefered placement

@@ -137,7 +137,7 @@ public:
 
     void setScoreImpactMultiplier(float scoreImpactMultiplier);
 
-    unsigned int evaluatePlacement(FeasiblePlacement fp);
+    unsigned int evaluatePlacement(FeasiblePlacement fp, bool isLastStep);
 };
 
 
