@@ -26,19 +26,17 @@ const Vector2 &Rigidbody::getDimension() const {
 
 void Rigidbody::setDimension(const Vector2 &dimension) {
     Rigidbody::dimension = dimension;
-    safeDist = dimension.getX() * dimension.getX() + dimension.getY() * dimension.getY();
 }
 
-void Rigidbody::applyMovement(float dt, float linearDrag) {
-    speed.multiply(1 - linearDrag);
+void Rigidbody::applyMovement(float dt) {
+    //speed.multiply(1 - linearDrag);
     Vector2 tmp = speed;
     tmp.multiply(dt);
     position.add(tmp);
 }
 
-void Rigidbody::addImpulse(Vector2 force, float dt) {
-    force.multiply(dt/mass);
-    speed.add(force);
+void Rigidbody::addImpulse(Vector2 force) {
+    stepForce.add(force);
 }
 
 
@@ -46,17 +44,22 @@ Rigidbody::Rigidbody() {
     this->speed = Vector2(0,0);
     this->dimension = Vector2(0,0);
     this->position = Vector2(0,0);
-    this->mass = 1;
 }
 
-float Rigidbody::getSafeDist() const {
-    return safeDist;
+void Rigidbody::resetStepForce() {
+    stepForce = Vector2(0,0);
 }
 
-void Rigidbody::setMass(float mass) {
-    Rigidbody::mass = mass;
+void Rigidbody::applyForces(float dt) {
+    stepForce.multiply(dt);
+    speed.add(stepForce);
 }
 
-float Rigidbody::getMass() const {
-    return mass;
+void Rigidbody::applyLinearDrag(float linearDrag) {
+    speed.multiply(1-linearDrag);
 }
+
+const Vector2 &Rigidbody::getStepForce() const {
+    return stepForce;
+}
+

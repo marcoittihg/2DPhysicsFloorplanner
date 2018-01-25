@@ -227,7 +227,7 @@ int main() {
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10020");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10021");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -235,10 +235,39 @@ int main() {
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
     //getAllFeasiblePlacements(&feasiblePlacements, problem);
 
-    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt",&feasiblePlacements);
+    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10021Regions.txt",&feasiblePlacements);
     //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
 
     //Keep only best regions by area
+
+    /*
+    for (int i = 0; i < feasiblePlacements.size(); ++i) {
+        std::list<FeasiblePlacement> placementsList{std::make_move_iterator(
+                std::begin(feasiblePlacements.at(i))), std::make_move_iterator(std::end(feasiblePlacements.at(i)))
+        };
+
+        int bestAreaValue = std::numeric_limits<unsigned short>::max();
+
+        for (std::list<FeasiblePlacement>::iterator it = placementsList.begin(); it != placementsList.end(); ++it) {
+            FeasiblePlacement fp = *it;
+
+            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
+
+            if (area < bestAreaValue) {
+                bestAreaValue = area;
+            }
+        }
+
+        placementsList.remove_if([bestAreaValue](FeasiblePlacement placement) {
+            unsigned short area = placement.getDimension().get_x() * placement.getDimension().get_y();
+            return area > bestAreaValue * 1.2;
+        });
+
+        std::vector<FeasiblePlacement> newVector{placementsList.begin(), placementsList.end()};
+        feasiblePlacements.at(i) = newVector;
+    }*/
+
+
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
         std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
 
@@ -255,16 +284,19 @@ int main() {
         }
 
         //Eliminate placements with area bigger than bestAreaValue + x%
+        int l = 0;
         for (int k = 0; k < feasiblePlacements.at(i).size(); ++k) {
             FeasiblePlacement fp = feasiblePlacements.at(i).at(k);
 
+
             unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
 
-            if(area > bestAreaValue * 1.3) {
-                feasiblePlacements.at(i).erase(feasiblePlacements.at(i).begin() + k);
-                k--;
+            if(!(area > bestAreaValue * 1.2)) {
+                feasiblePlacements.at(i).at(l) = placementVector.at(k);
+                l++;
             }
         }
+        feasiblePlacements.at(i).resize(l);
     }
 
     //Create regions

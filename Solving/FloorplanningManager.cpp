@@ -12,7 +12,7 @@
 
 void FloorplanningManager::start() {
     time = 0;
-    wireStabTime = 150.0;
+    wireStabTime = 400.0;
     closestAlternativeRefreshTime = 80.0;
     lastAlternativeRefreshTime = 0.0;
 
@@ -197,8 +197,8 @@ void FloorplanningManager::onPysicsStep() {
             Physics::getINSTANCE().setEnableBarrierCollisions(false);
             Physics::getINSTANCE().setIoForceMultiplier(1);
             Physics::getINSTANCE().setEnableRegionCollisions(true);
-            Physics::getINSTANCE().setFIXED_STEP_TIME(0.04);
-            Physics::getINSTANCE().setLinearDrag(0.01);
+            Physics::getINSTANCE().setFIXED_STEP_TIME(0.01);
+            Physics::getINSTANCE().setLinearDrag(0.1);
         }
 
     }else if(state == FloortplanningMangerState::SEARCH_PLACEM){

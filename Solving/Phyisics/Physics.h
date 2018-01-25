@@ -30,6 +30,9 @@ public:
 
 private:
 
+    static float constexpr MAX_STEP_TIME = 0.1;
+
+
     Physics() = default;
 
     /** Rigidbody that are simulated
@@ -75,7 +78,7 @@ private:
 
     /** Linear drag for step for each region
      */
-    float linearDrag = 0.01;
+    float linearDrag = 0.1;
 
     /** Maximum modulus of the noise
      */

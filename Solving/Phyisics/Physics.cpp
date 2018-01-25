@@ -12,6 +12,7 @@ void Physics::onStart() {
         physicsRegions[i].onPhysicsStart();
     }
 
+
     noise = Vector2(0,0);
     noiseSpeedCoeff = 0;
     noiseModulus = 0;
@@ -26,7 +27,6 @@ void Physics::doStep() {
     for (int i = 0; i < regionNum; ++i) {
         physicsRegions[i].fixedPhysicsStep();
     }
-
 
     //calculate collisions and apply separation forces
     for (int i = 0; i < regionNum && isEnableRegionCollisions(); ++i) {
@@ -81,10 +81,10 @@ void Physics::doStep() {
 
 
             //Apply separation forces
-            rigidbodies[i].addImpulse(force, FIXED_STEP_TIME);
+            rigidbodies[i].addImpulse(force);
 
             force.multiply(-1);
-            rigidbodies[j].addImpulse(force, FIXED_STEP_TIME);
+            rigidbodies[j].addImpulse(force);
         }
     }
 
@@ -116,10 +116,68 @@ void Physics::doStep() {
         rigidbodies[i].addImpulse(tmpNoise, FIXED_STEP_TIME);
     }*/
 
+    //Calculate maximum possible timeStep
+    float maxDistance = std::numeric_limits<float>::max();
 
-    //Move the regions
     for (int j = 0; j < regionNum; ++j) {
-        rigidbodies[j].applyMovement(FIXED_STEP_TIME, linearDrag);
+        Vector2 dim = rigidbodies[j].getDimension();
+        float min = std::min(dim.getX(),dim.getY());
+        if(min < maxDistance)
+            maxDistance = min;
+    }
+
+    maxDistance /= 4;
+
+
+    FIXED_STEP_TIME = MAX_STEP_TIME;
+
+    for (int j = 0; j < regionNum; ++j) {
+        float lowerTimeBound = 0;
+        float upperTimeBound = FIXED_STEP_TIME;
+
+        Vector2 v0t = rigidbodies[j].getSpeed();
+        v0t.multiply(upperTimeBound);
+
+        Vector2 at2 = rigidbodies[j].getStepForce();
+        at2.multiply(upperTimeBound * upperTimeBound);
+        v0t.add(at2);
+
+        float upperValue = v0t.mangnitude();
+
+        if(upperValue < maxDistance)
+            continue;
+
+        for (int i = 0; i < 10; ++i) {
+            float midTime = (lowerTimeBound+upperTimeBound) / 2;
+
+            Vector2 v0t = rigidbodies[j].getSpeed();
+            v0t.multiply(midTime);
+
+            Vector2 at2 = rigidbodies[j].getStepForce();
+            at2.multiply(midTime * midTime);
+
+            v0t.add(at2);
+
+            float midValue = v0t.mangnitude();
+            midValue-=maxDistance;
+
+            if(midValue > 0){
+                upperTimeBound = midTime;
+            }else{
+                lowerTimeBound = midTime;
+            }
+        }
+
+        FIXED_STEP_TIME = (upperTimeBound + lowerTimeBound) / 2;
+    }
+
+
+    //Apply forces and move the regions
+    for (int j = 0; j < regionNum; ++j) {
+        rigidbodies[j].applyForces(FIXED_STEP_TIME);
+        rigidbodies[j].applyLinearDrag(linearDrag);
+        rigidbodies[j].applyMovement(FIXED_STEP_TIME);
+        rigidbodies[j].resetStepForce();
     }
 
     //Check if some region is outside of the border

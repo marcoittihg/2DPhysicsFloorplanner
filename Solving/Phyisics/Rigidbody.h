@@ -23,12 +23,9 @@ class Rigidbody {
      */
     Vector2 dimension;
 
-    float mass;
-
-    /** Safe distance for collisions
+    /** Force applied for this step
      */
-    float safeDist = 0;
-
+    Vector2 stepForce;
 public:
     Rigidbody();
 
@@ -45,22 +42,23 @@ public:
 
     void setDimension(const Vector2 &dimension);
 
-    float getSafeDist() const;
-
     /** Add an impulsive force to the rigidbody
      * @param force The force to apply
-     * @param dt Impulse time
      */
-    void addImpulse(Vector2 force, float dt);
+    void addImpulse(Vector2 force);
 
     /**Moves the region for a time step of length dt and apply the linear drag
      * @param dt
      */
-    void applyMovement(float dt, float linearDrag);
+    void applyMovement(float dt);
 
-    void setMass(float mass);
+    void applyForces(float dt);
 
-    float getMass() const;
+    void applyLinearDrag(float linearDrag);
+
+    void resetStepForce();
+
+    const Vector2 &getStepForce() const;
 };
 
 

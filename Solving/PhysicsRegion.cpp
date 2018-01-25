@@ -81,7 +81,7 @@ void PhysicsRegion::fixedPhysicsStep() {
                 distanceVector.multiply(penetrDepth * Physics::getINSTANCE().getSeparationCoeff());
                 Vector2 force = distanceVector;
 
-                regions[i].getRb()->addImpulse(force, Physics::getINSTANCE().getFIXED_STEP_TIME());
+                regions[i].getRb()->addImpulse(force);
             }
         }
     }
@@ -96,7 +96,7 @@ void PhysicsRegion::fixedPhysicsStep() {
 
             int numWire = interconnectedRegionsWeights.at(i);
             intercPos.multiply(Physics::getINSTANCE().getWireForceCoeff() * numWire);
-            rb->addImpulse(intercPos, Physics::getINSTANCE().getFIXED_STEP_TIME());
+            rb->addImpulse(intercPos);
         }
     }
 
@@ -114,7 +114,7 @@ void PhysicsRegion::fixedPhysicsStep() {
 
             IOPos.multiply(Physics::getINSTANCE().getWireForceCoeff() * numWire * Physics::getINSTANCE().getIoForceMultiplier());
 
-            rb->addImpulse(IOPos, Physics::getINSTANCE().getFIXED_STEP_TIME());
+            rb->addImpulse(IOPos);
         }
     }
 
@@ -131,7 +131,7 @@ void PhysicsRegion::fixedPhysicsStep() {
     Vector2 force = bestAnchor;
     //force.add(altAnchor);
 
-    rb->addImpulse(force, Physics::getINSTANCE().getFIXED_STEP_TIME());
+    rb->addImpulse(force);
 }
 
 PhysicsRegion::PhysicsRegion() {
