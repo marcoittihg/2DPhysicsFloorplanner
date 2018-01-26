@@ -268,6 +268,7 @@ int main() {
     }*/
 
 
+    float maxArea = std::exp(-problem->getNumRegions()/15)+1.05;
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
         std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
 
@@ -291,7 +292,7 @@ int main() {
 
             unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
 
-            if(!(area > bestAreaValue * 1.2)) {
+            if(!(area > bestAreaValue * maxArea)) {
                 feasiblePlacements.at(i).at(l) = placementVector.at(k);
                 l++;
             }
@@ -299,6 +300,15 @@ int main() {
         feasiblePlacements.at(i).resize(l);
     }
 
+    //Precalculate resorces of each placement
+
+    for (int i = 0; i < feasiblePlacements.size(); ++i) {
+        std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
+
+        for (int j = 0; j < placementVector.size(); ++j) {
+            placementVector.at(j).calculateResources(problem->getBoard());
+        }
+    }
     //Create regions
     PhysicsRegion* region;
     for (int i = 0; i < feasiblePlacements.size(); ++i) {

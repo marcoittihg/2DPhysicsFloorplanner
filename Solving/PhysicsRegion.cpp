@@ -4,6 +4,7 @@
 
 #include "PhysicsRegion.h"
 #include "FloorplanningManager.h"
+#include "Resources.h"
 #include <cmath>
 #include <iostream>
 #include <random>
@@ -314,12 +315,6 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     if(minIndexes.empty()){
         //No placement found, need to select it in an other way
-        struct Resources{
-        public:
-            unsigned short CLB = 0;
-            unsigned short BRAM = 0;
-            unsigned short DSP = 0;
-        };
 
         Resources res[regNum];
 
@@ -329,21 +324,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
             //For each region prefered placement evaluate the wasted resources
             FeasiblePlacement fp = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
 
-
-            for (int i = 0; i < fp.getDimension().get_x(); ++i) {
-                for (int k = 0; k < fp.getDimension().get_y(); ++k) {
-                    Block block = board->getBlockMatrix(fp.getStartPosition().get_y() + k, fp.getStartPosition().get_x() + i);
-
-                    switch(block){
-                        case Block::CLB_BLOCK : res[j].CLB++;
-                            break;
-                        case Block::DSP_BLOCK : res[j].DSP++;
-                            break;
-                        case Block::BRAM_BLOCK: res[j].BRAM++;
-                            break;
-                    }
-                }
-            }
+            res[j] = fp.getResources();
 
             ProblemRegion* region = const_cast<ProblemRegion *>(FloorplanningManager::getINSTANCE().getProblem()->getFloorplanProblemRegion(j));
             res[j].CLB -= region->getCLBNum();
@@ -363,24 +344,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
             distance.multiply(-1);
             distance.add(regions[regionIndex].getWireStabilityPosition());
 
-            Resources resources;
-            resources.DSP = resources.CLB = resources.BRAM = 0;
-
-            //Evaluate the waste of resources
-            for (int i = 0; i < fp.getDimension().get_x(); ++i) {
-                for (int k = 0; k < fp.getDimension().get_y(); ++k) {
-                    Block block = board->getBlockMatrix(fp.getStartPosition().get_y() + k, fp.getStartPosition().get_x() + i);
-
-                    switch(block){
-                        case Block::CLB_BLOCK : resources.CLB++;
-                            break;
-                        case Block::DSP_BLOCK : resources.DSP++;
-                            break;
-                        case Block::BRAM_BLOCK: resources.BRAM++;
-                            break;
-                    }
-                }
-            }
+            Resources resources = fp.getResources();
 
             ProblemRegion* region =
                     const_cast<ProblemRegion *>(

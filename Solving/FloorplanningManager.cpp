@@ -12,7 +12,7 @@
 
 void FloorplanningManager::start() {
     time = 0;
-    wireStabTime = 400.0;
+    wireStabTime = 200.0;
     closestAlternativeRefreshTime = 80.0;
     lastAlternativeRefreshTime = 0.0;
 
@@ -154,12 +154,11 @@ void FloorplanningManager::onPysicsStep() {
         }else{
             //Change state for next iteration
             state = FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY;
-            Physics::getINSTANCE().setWireForceCoeff(1);
+            Physics::getINSTANCE().setWireForceCoeff(2);
             Physics::getINSTANCE().setEnableBarrierCollisions(true);
             time = 0;
             Physics::getINSTANCE().setIoForceMultiplier(1);
             Physics::getINSTANCE().setEnableRegionCollisions(false);
-            Physics::getINSTANCE().setFIXED_STEP_TIME(0.01);
         }
     } else if(state == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
         PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
@@ -167,7 +166,7 @@ void FloorplanningManager::onPysicsStep() {
 
 
         if(time > 20)
-            Physics::getINSTANCE().setSeparationCoeff(30*(time-20));
+            Physics::getINSTANCE().setSeparationCoeff((time-20)*(time-20));
 
         if(time > wireStabTime){
             //Save wire stability position for each floating region
@@ -197,8 +196,6 @@ void FloorplanningManager::onPysicsStep() {
             Physics::getINSTANCE().setEnableBarrierCollisions(false);
             Physics::getINSTANCE().setIoForceMultiplier(1);
             Physics::getINSTANCE().setEnableRegionCollisions(true);
-            Physics::getINSTANCE().setFIXED_STEP_TIME(0.01);
-            Physics::getINSTANCE().setLinearDrag(0.1);
         }
 
     }else if(state == FloortplanningMangerState::SEARCH_PLACEM){

@@ -9,6 +9,8 @@
 #include "../BaseUtils/Point2D.h"
 #include "../Data/ProblemData/RegionType.h"
 #include "FeasiblePlacementState.h"
+#include "Resources.h"
+#include "../Data/FPGAData/Board.h"
 
 class FeasiblePlacement {
     /**Starting position of the placement
@@ -36,6 +38,10 @@ class FeasiblePlacement {
      */
     unsigned int scoreLoss;
 
+    /** Resorces occupied by the placement
+     */
+    Resources resources;
+
 public:
     const Point2D &getStartPosition() const;
 
@@ -62,6 +68,10 @@ public:
     void setScoreLoss(unsigned int scoreLoss);
 
     bool checkContains(FeasiblePlacement *feasiblePlacement) const;
+
+    void calculateResources(Board* board);
+
+    const Resources &getResources() const;
 
     /**
      * Check if two placements collides
