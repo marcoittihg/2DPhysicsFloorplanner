@@ -11,7 +11,7 @@
 #include "FloortplanningMangerState.h"
 
 void FloorplanningManager::start() {
-    time = 0;
+    _time = 0;
     wireStabTime = 200.0;
     closestAlternativeRefreshTime = 80.0;
     lastAlternativeRefreshTime = 0.0;
@@ -21,7 +21,7 @@ void FloorplanningManager::start() {
 }
 
 void FloorplanningManager::onPysicsStep() {
-    time += Physics::getINSTANCE().getFIXED_STEP_TIME();
+    _time += Physics::getINSTANCE().getFIXED_STEP_TIME();
 
     if(state == FloortplanningMangerState::START){
         //Check how many floating regions there are
@@ -147,7 +147,7 @@ void FloorplanningManager::onPysicsStep() {
 
             //Change state
             state = FloortplanningMangerState::SEARCH_PLACEM;
-            time = 0;
+            _time = 0;
             Physics::getINSTANCE().setNoiseSpeedCoeff(10);
             Physics::getINSTANCE().setNoiseModulus(0);
             Physics::getINSTANCE().setWireForceCoeff(0.0);
@@ -156,19 +156,20 @@ void FloorplanningManager::onPysicsStep() {
             state = FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY;
             Physics::getINSTANCE().setWireForceCoeff(2);
             Physics::getINSTANCE().setEnableBarrierCollisions(true);
-            time = 0;
+            _time = 0;
             Physics::getINSTANCE().setIoForceMultiplier(1);
             Physics::getINSTANCE().setEnableRegionCollisions(false);
+            tmpTime = time(NULL);
         }
     } else if(state == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
         PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
         int regionNum = problem->getNumRegions();
 
 
-        if(time > 20)
-            Physics::getINSTANCE().setSeparationCoeff((time-20)*(time-20));
+        if(_time > 20)
+            Physics::getINSTANCE().setSeparationCoeff((_time-20)*(_time-20));
 
-        if(time > wireStabTime){
+        if(_time > wireStabTime){
             //Save wire stability position for each floating region
             for (int i = 0; i < regionNum; ++i) {
                 if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
@@ -188,7 +189,7 @@ void FloorplanningManager::onPysicsStep() {
 
 
             //Go to search placement state
-            time = 0;
+            _time = 0;
             state = FloortplanningMangerState::SEARCH_PLACEM;
             Physics::getINSTANCE().setNoiseSpeedCoeff(10);
             Physics::getINSTANCE().setNoiseModulus(0);
@@ -196,15 +197,19 @@ void FloorplanningManager::onPysicsStep() {
             Physics::getINSTANCE().setEnableBarrierCollisions(false);
             Physics::getINSTANCE().setIoForceMultiplier(1);
             Physics::getINSTANCE().setEnableRegionCollisions(true);
+
+            time_t wireStabEndTime = time(NULL);
+            std::cout<<"Wire stability search time : "<<wireStabEndTime - tmpTime<<std::endl;
+            tmpTime = wireStabEndTime;
         }
 
     }else if(state == FloortplanningMangerState::SEARCH_PLACEM){
-        if(time > 40)
-            Physics::getINSTANCE().setSeparationCoeff((time-40));
+        if(_time > 40)
+            Physics::getINSTANCE().setSeparationCoeff((_time-40));
         else{
             Physics::getINSTANCE().setSeparationCoeff(0);
         }
-        Physics::getINSTANCE().setPreferedAnchorCoeff(5*time);
+        Physics::getINSTANCE().setPreferedAnchorCoeff(5*_time);
         //Physics::getINSTANCE().setClosestAnchorCoeff(sqrt(time));
         //Physics::getINSTANCE().setNoiseModulus(sqrt(time));
 
@@ -212,7 +217,7 @@ void FloorplanningManager::onPysicsStep() {
         //If is passed enough time select the region that need to reevaluate his prefered choice
         PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
         int regionNum = problem->getNumRegions();
-        if(time - lastAlternativeRefreshTime > closestAlternativeRefreshTime) {
+        if(_time - lastAlternativeRefreshTime > closestAlternativeRefreshTime) {
 
             //True if the region of index i has been already considered
             bool consideredRegions[regionNum];
@@ -391,8 +396,13 @@ void FloorplanningManager::onPysicsStep() {
 
             if(!found){
                 state = FloortplanningMangerState ::START;
+
+                time_t placementSearchEndTime = time(NULL);
+                std::cout<<"Placements search time : "<<placementSearchEndTime - tmpTime<<std::endl;
+                tmpTime = placementSearchEndTime;
+
             }
-            time = 0;
+            _time = 0;
         }
 
         /*

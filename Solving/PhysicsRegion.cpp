@@ -127,7 +127,7 @@ void PhysicsRegion::fixedPhysicsStep() {
     //Calculate distance from pref anchor
     float dist = bestAnchor.mangnitude() + 1;
 
-    bestAnchor.multiply(Physics::getINSTANCE().getPreferedAnchorCoeff() * anchorForceMultiplier * scoreImpactMultiplier);
+    bestAnchor.multiply(Physics::getINSTANCE().getPreferedAnchorCoeff() * anchorForceMultiplier);
 
     Vector2 force = bestAnchor;
     //force.add(altAnchor);
@@ -471,12 +471,4 @@ unsigned short PhysicsRegion::getPlacementNum() const {
 
 void PhysicsRegion::setPlacementNum(unsigned short placementNum) {
     PhysicsRegion::placementNum = placementNum;
-}
-
-float PhysicsRegion::getScoreImpactMultiplier() const {
-    return scoreImpactMultiplier;
-}
-
-void PhysicsRegion::setScoreImpactMultiplier(float scoreImpactMultiplier) {
-    PhysicsRegion::scoreImpactMultiplier = scoreImpactMultiplier;
 }

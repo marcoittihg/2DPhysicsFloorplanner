@@ -48,7 +48,6 @@ class PhysicsRegion {
 
     float anchorForceMultiplier = 1;
 
-    float scoreImpactMultiplier;
 
     Vector2 preferedAnchorPoint = Vector2(0,0);
 
@@ -132,10 +131,6 @@ public:
     unsigned short getPlacementNum() const;
 
     void setPlacementNum(unsigned short placementNum);
-
-    float getScoreImpactMultiplier() const;
-
-    void setScoreImpactMultiplier(float scoreImpactMultiplier);
 
     unsigned int evaluatePlacement(FeasiblePlacement fp, bool isLastStep);
 };

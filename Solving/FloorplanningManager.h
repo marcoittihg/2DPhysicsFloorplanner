@@ -35,7 +35,7 @@ public:
 private:
     Problem* problem;
 
-    float time;
+    float _time;
 
     FloortplanningMangerState state;
 
@@ -46,6 +46,8 @@ private:
     float lastAlternativeRefreshTime;
 
     float placemStabTime;
+
+    time_t tmpTime;
 };
 
 

@@ -223,11 +223,13 @@ void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasi
 }
 
 int main() {
+    time_t seconds;
+    seconds = time (NULL);
     cout << "*------* STARTING *------*" << endl;
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10021");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10020");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -235,7 +237,7 @@ int main() {
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
     //getAllFeasiblePlacements(&feasiblePlacements, problem);
 
-    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10021Regions.txt",&feasiblePlacements);
+    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt",&feasiblePlacements);
     //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
 
     //Keep only best regions by area
@@ -301,7 +303,6 @@ int main() {
     }
 
     //Precalculate resorces of each placement
-
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
         std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
 
@@ -376,43 +377,10 @@ int main() {
         }
     }
 
-    //Evaluate score impact multiplier for each region
-    float totCost = 0;
-    for (int k = 0; k < numRegions; ++k) {
-        //For each region
-        ProblemRegion* region1 = const_cast<ProblemRegion *>(problem->getFloorplanProblemRegion(k));
+    time_t seconds2;
+    seconds2 = time (NULL);
 
-        float scoreValue = region1->getBRAMNum() * problem->getBRAMCost() +
-                region1->getCLBNum() * problem->getCLBCost() +
-                region1->getDSPNum() * problem->getDSPCost();
-        scoreValue *= problem->getAreaCost();
-
-        float wireScore = 0;
-        for (int i = 0; i < region1->getIONum(); ++i) {
-            wireScore += region1->getRegionIO()[i].getNumWires();
-        }
-
-        for (int j = 0; j < numRegions; ++j) {
-            wireScore += problem->getInterconnectionsMatrix(k,j) + problem->getInterconnectionsMatrix(j,k);
-        }
-
-        wireScore *= problem->getWireCost();
-
-        Point2D boardDim = problem->getBoard()->getDimension();
-        float wireCostCoff = std::sqrt(boardDim.get_x() * boardDim.get_x() + boardDim.get_y() * boardDim.get_y());
-        wireCostCoff *= 0.15;
-
-        wireScore *= wireCostCoff;
-
-        totCost += wireScore + scoreValue;
-
-        regions[k].setScoreImpactMultiplier(wireScore + scoreValue);
-    }
-
-    for (int l = 0; l < numRegions; ++l) {
-        regions[l].setScoreImpactMultiplier(regions[l].getScoreImpactMultiplier() / totCost * numRegions );
-        regions[l].setScoreImpactMultiplier(1);
-    }
+    std::cout<<"Problem load time : "<<seconds2 - seconds<<std::endl;
 
     Physics::getINSTANCE().setBoard(problem->getBoard());
 
