@@ -8,11 +8,10 @@
 #include <set>
 #include "FloorplanningManager.h"
 #include "PhysicsRegion.h"
-#include "FloortplanningMangerState.h"
 
 void FloorplanningManager::start() {
     _time = 0;
-    wireStabTime = 200.0;
+    wireStabTime = 380.0;
     closestAlternativeRefreshTime = 80.0;
     lastAlternativeRefreshTime = 0.0;
 
@@ -38,7 +37,7 @@ void FloorplanningManager::onPysicsStep() {
                         problem->getFloorplanProblemRegion(i)->getCLBNum() +
                         problem->getFloorplanProblemRegion(i)->getCLBNum());
 
-                float radius = 1.15 * std::sqrt(blockNum / M_PI);
+                float radius = std::sqrt(blockNum / M_PI);
 
                 regions[i].getRb()->setDimension(Vector2(radius,radius));
                 floatingReg++;
@@ -126,6 +125,56 @@ void FloorplanningManager::onPysicsStep() {
 
                 std::cout<<fp.getStartPosition().get_x()+1<<" "<< fp.getStartPosition().get_y()+1<<" "<<+fp.getDimension().get_x()<<" "<<+fp.getDimension().get_y()<<std::endl;
             }
+
+            //Print total wirelen
+            float wirelenSum = 0;
+            for (int i = 0; i < regionNum; ++i) {
+                //For each region
+                PhysicsRegion region = regions[i];
+
+                std::vector<PhysicsRegion*> intercRegions = region.getInterconnectedRegions();
+                std::vector<int> intercWeight = region.getInterconnectedRegionsWeights();
+                for (int j = 0; j < intercRegions.size(); ++j) {
+                    //For each interc region
+                    PhysicsRegion* intercRegion = intercRegions.at(j);
+
+                    Vector2 distance = intercRegion->getRb()->getPosition();
+                    distance.multiply(-1);
+                    distance.add(region.getRb()->getPosition());
+
+                    float xDist = std::abs(distance.getX());
+                    float yDist = std::abs(distance.getY());
+
+                    float wirelen = ((xDist + yDist) * intercWeight.at(j)) / 2;
+
+                    wirelenSum += wirelen;
+                }
+
+                Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+                Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+
+                Vector2 regionPos = region.getRb()->getPosition();
+
+                for (int j = 0; j < region.getIONum(); ++j) {
+                    RegionIOData* IOData = region.getRegionIO();
+
+                    Vector2 IOPos = Vector2(IOData->getPortColumn(),IOData->getPortRow());
+                    IOPos.add(minusHalfBoardDim);
+                    IOPos.multiply(-1);
+                    IOPos.add(regionPos);
+
+                    float xDist = std::abs(IOPos.getX());
+                    float yDist = std::abs(IOPos.getY());
+
+                    float wirelen = (xDist + yDist) * IOData->getNumWires();
+
+                    wirelenSum += wirelen;
+                }
+
+            }
+
+            std::cout << std::endl << "Total wirelen: " << wirelenSum * problem->getWireCost() << std::endl;
+
             return;
         }
 
@@ -150,11 +199,11 @@ void FloorplanningManager::onPysicsStep() {
             _time = 0;
             Physics::getINSTANCE().setNoiseSpeedCoeff(10);
             Physics::getINSTANCE().setNoiseModulus(0);
-            Physics::getINSTANCE().setWireForceCoeff(0.0);
+            Physics::getINSTANCE().setWireForceCoeff(0);
         }else{
             //Change state for next iteration
             state = FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY;
-            Physics::getINSTANCE().setWireForceCoeff(2);
+            Physics::getINSTANCE().setWireForceCoeff(1);
             Physics::getINSTANCE().setEnableBarrierCollisions(true);
             _time = 0;
             Physics::getINSTANCE().setIoForceMultiplier(1);
@@ -166,8 +215,10 @@ void FloorplanningManager::onPysicsStep() {
         int regionNum = problem->getNumRegions();
 
 
-        if(_time > 20)
-            Physics::getINSTANCE().setSeparationCoeff((_time-20)*(_time-20));
+        if(_time > 100)
+            Physics::getINSTANCE().setSeparationCoeff(0+(_time-100)*(_time-100));
+        else
+            Physics::getINSTANCE().setSeparationCoeff(0);
 
         if(_time > wireStabTime){
             //Save wire stability position for each floating region

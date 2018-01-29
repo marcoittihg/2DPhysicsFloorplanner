@@ -133,6 +133,8 @@ public:
     void setPlacementNum(unsigned short placementNum);
 
     unsigned int evaluatePlacement(FeasiblePlacement fp, bool isLastStep);
+
+    const std::vector<int> &getInterconnectedRegionsWeights() const;
 };
 
 

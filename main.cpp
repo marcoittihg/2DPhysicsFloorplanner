@@ -225,23 +225,48 @@ void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasi
 int main() {
     time_t seconds;
     seconds = time (NULL);
+
     cout << "*------* STARTING *------*" << endl;
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/FloorplanningContestGeneticAlgorithm/Problems/10020");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/Problems/10020");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
 
+    int boardBlockCounter = 0;
+    int problemBlockCounter = 0;
+
+    Board* board = problem->getBoard();
+    for (int i = 0; i < board->getDimension().get_x(); ++i) {
+        for (int j = 0; j < board->getDimension().get_y(); ++j) {
+            Block block = board->getBlockMatrix(i,j);
+            if(block == Block::CLB_BLOCK || block == Block::DSP_BLOCK || block == Block::BRAM_BLOCK)
+                boardBlockCounter++;
+        }
+    }
+
+    for (int i = 0; i < problem->getNumRegions(); ++i) {
+        ProblemRegion* pr = const_cast<ProblemRegion *>(problem->getFloorplanProblemRegion(i));
+        problemBlockCounter += pr->getCLBNum() + pr->getDSPNum() + pr->getBRAMNum();
+    }
+
+    float percentage = ((float)problemBlockCounter / (float)boardBlockCounter);
+    std::cout << "Density: " << percentage * 100 <<"%"<<std::endl;
+
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
     //getAllFeasiblePlacements(&feasiblePlacements, problem);
 
-    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt",&feasiblePlacements);
+    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt", &feasiblePlacements);
     //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
 
-    //Keep only best regions by area
+    time_t seconds2;
+    seconds2 = time (NULL);
+    std::cout<<"Feasible placements search time : "<<seconds2 - seconds<<std::endl;
+    seconds = seconds2;
 
+    //Keep only best regions by area
     /*
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
         std::list<FeasiblePlacement> placementsList{std::make_move_iterator(
@@ -270,7 +295,9 @@ int main() {
     }*/
 
 
-    float maxArea = std::exp(-problem->getNumRegions()/15)+1.05;
+    //float maxArea = 2*std::exp(-problem->getNumRegions()/20)+1.05;
+    float maxArea = 1.0/3.0 / percentage + 2.0/3.0 + 0.05;
+    std::cout<<"Problem max area: "<<maxArea<<std::endl;
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
         std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
 
@@ -294,7 +321,7 @@ int main() {
 
             unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
 
-            if(!(area > bestAreaValue * maxArea)) {
+            if(area <= bestAreaValue * maxArea) {
                 feasiblePlacements.at(i).at(l) = placementVector.at(k);
                 l++;
             }
@@ -310,6 +337,7 @@ int main() {
             placementVector.at(j).calculateResources(problem->getBoard());
         }
     }
+
     //Create regions
     PhysicsRegion* region;
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
@@ -328,7 +356,6 @@ int main() {
         region->setFeasiblePlacements(placementArray);
         region->setRegionIO(problem->getFloorplanProblemRegion(i)->getRegionIO());
         region->setIONum(problem->getFloorplanProblemRegion(i)->getIONum());
-
 
     }
 
@@ -377,12 +404,12 @@ int main() {
         }
     }
 
-    time_t seconds2;
-    seconds2 = time (NULL);
 
-    std::cout<<"Problem load time : "<<seconds2 - seconds<<std::endl;
+    seconds2 = time (NULL);
+    std::cout<<"Regions elimination time : "<<seconds2 - seconds<<std::endl;
 
     Physics::getINSTANCE().setBoard(problem->getBoard());
+
 
     FloorplanningManager::getINSTANCE().setProblem(problem);
     FloorplanningManager::getINSTANCE().start();

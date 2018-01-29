@@ -97,6 +97,7 @@ void PhysicsRegion::fixedPhysicsStep() {
 
             int numWire = interconnectedRegionsWeights.at(i);
             intercPos.multiply(Physics::getINSTANCE().getWireForceCoeff() * numWire);
+
             rb->addImpulse(intercPos);
         }
     }
@@ -434,7 +435,6 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     stabPoint.add(Vector2(pMidX, pMidY));
 
-    //anchorForceMultiplier = 1 + 500 * (1 - (float)index / (float)placementNum) / stabPoint.mangnitude();
 
     anchorForceMultiplier = 1
                             + 10 / (stabPoint.mangnitude()+0.1)
@@ -449,12 +449,6 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     //Set shape
     rb->setDimension(Vector2(prefPlacemnt.getDimension().get_x(),prefPlacemnt.getDimension().get_y()));
-
-    /*std::cout<<"Region "<<+regionIndex<<std::endl;
-    std::cout<<"Start placement "<<+prefPlacemnt.getStartPosition().get_x()<<" , "<<+prefPlacemnt.getStartPosition().get_y()<<std::endl;
-    std::cout<<"Dim placement "<<+prefPlacemnt.getDimension().get_x()<<" , "<<+prefPlacemnt.getDimension().get_y()<<std::endl;
-    std::cout<<"Anchor point"<<preferedAnchorPoint.getX()<<" , "<<preferedAnchorPoint.getX()<<std::endl<<std::endl;
-*/
 }
 
 void PhysicsRegion::savePositionAsWireStability() {
@@ -471,4 +465,8 @@ unsigned short PhysicsRegion::getPlacementNum() const {
 
 void PhysicsRegion::setPlacementNum(unsigned short placementNum) {
     PhysicsRegion::placementNum = placementNum;
+}
+
+const std::vector<int> &PhysicsRegion::getInterconnectedRegionsWeights() const {
+    return interconnectedRegionsWeights;
 }

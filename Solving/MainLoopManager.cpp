@@ -17,6 +17,7 @@ void MainLoopManager::startLoop() {
     int phyStepCont= 0;
     while(!glfwWindowShouldClose(Render::getINSTANCE().getWindow())) {
         Physics::getINSTANCE().doStep();
+
         phyStepCont++;
 
         if(phyStepCont % 1000 == 0) {
@@ -26,5 +27,4 @@ void MainLoopManager::startLoop() {
     }
 
     glfwTerminate();
-
 }

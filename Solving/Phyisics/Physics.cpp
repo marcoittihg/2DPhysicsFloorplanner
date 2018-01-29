@@ -128,8 +128,12 @@ void Physics::doStep() {
 
     maxDistance /= 4;
 
+    if(maxDistance > 0.1){
+        maxDistance = 0.1;
+    }
 
     FIXED_STEP_TIME = MAX_STEP_TIME;
+
 
     for (int j = 0; j < regionNum; ++j) {
         float lowerTimeBound = 0;
@@ -167,10 +171,12 @@ void Physics::doStep() {
                 lowerTimeBound = midTime;
             }
         }
-
         FIXED_STEP_TIME = (upperTimeBound + lowerTimeBound) / 2;
     }
 
+    if(FIXED_STEP_TIME == 0){
+        FIXED_STEP_TIME = 0.01;
+    }
 
     //Apply forces and move the regions
     for (int j = 0; j < regionNum; ++j) {
