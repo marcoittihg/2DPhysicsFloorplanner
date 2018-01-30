@@ -47,7 +47,7 @@ void PhysicsRegion::onPhysicsStart() {
 
 void PhysicsRegion::fixedPhysicsStep() {
     Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-    Vector2 halfBoardDim = Vector2((float)boardDim.get_y() / (float)2, (float)boardDim.get_x() / (float)2);
+    Vector2 halfBoardDim = Vector2((float)boardDim.get_x() / (float)2, (float)boardDim.get_y() / (float)2);
     halfBoardDim.multiply(-1);
 
     Vector2 pos = rb->getPosition();
@@ -203,7 +203,7 @@ void PhysicsRegion::resetPositionAndShape() {
 unsigned int PhysicsRegion::evaluatePlacement(FeasiblePlacement fp, bool isLastStep){
 
     Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_x() / 2, -(float)boardDim.get_y() / 2);
 
     float placementMidX = static_cast<float>(fp.getStartPosition().get_x() + 0.5 * fp.getDimension().get_x());
     float placementMidY = static_cast<float>(fp.getStartPosition().get_y() + 0.5 * fp.getDimension().get_y());
@@ -256,7 +256,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
     int regNum = Physics::getINSTANCE().getRegionNum();
 
     Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+    Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_x() / 2, -(float)boardDim.get_y() / 2);
 
     for (int i = 0; i < placementNum; ++i) {
         //For each placement

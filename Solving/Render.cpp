@@ -48,7 +48,7 @@ void Render::onUpdateScreeen() {
 
     windowRatio = (float)windowWidth / (float)windowHeight;
 
-    Vector2 boardHalfDimension = Vector2(board->getDimension().get_y(), board->getDimension().get_x());
+    Vector2 boardHalfDimension = Vector2(board->getDimension().get_x(), board->getDimension().get_y());
     boardHalfDimension.multiply(0.5);
 
     Vector2 minuHalfBoardDim = boardHalfDimension;
@@ -63,18 +63,18 @@ void Render::onUpdateScreeen() {
 
     glEnd();
 
-    float yStep = 2 * boardEdges.getY() / board->getDimension().get_x();
-    float xStep = 2 * boardEdges.getX() / board->getDimension().get_y();
+    float yStep = 2 * boardEdges.getY() / board->getDimension().get_y();
+    float xStep = 2 * boardEdges.getX() / board->getDimension().get_x();
 
     glColor4f(1,1,1,0.1);
 
-    for (int i = 0; i < board->getDimension().get_y(); ++i) {
+    for (int i = 0; i < board->getDimension().get_x(); ++i) {
         glBegin(GL_LINE_LOOP);
         glVertex3f(-boardEdges.getX() + xStep * i,+boardEdges.getY(),0);
         glVertex3f(-boardEdges.getX() + xStep * i,-boardEdges.getY(),0);
         glEnd();
     }
-    for (int i = 0; i < board->getDimension().get_x(); ++i) {
+    for (int i = 0; i < board->getDimension().get_y(); ++i) {
         glBegin(GL_LINE_LOOP);
         glVertex3f(+boardEdges.getX(),boardEdges.getY() - yStep * i,0);
         glVertex3f(-boardEdges.getX(),boardEdges.getY() - yStep * i,0);

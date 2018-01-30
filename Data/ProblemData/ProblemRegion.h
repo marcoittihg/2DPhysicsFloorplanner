@@ -5,8 +5,9 @@
 #ifndef BUBBLEREGIONSFLOORPLANNER_PROBLEMREGION_H
 #define BUBBLEREGIONSFLOORPLANNER_PROBLEMREGION_H
 
-
 #include <fstream>
+#include <map>
+#include "../FPGAData/Block.h"
 #include "RegionType.h"
 #include "RegionIOData.h"
 
@@ -15,18 +16,6 @@ class ProblemRegion {
      */
     RegionType type;
 
-    /** Number of requested CLB
-     */
-    int CLBNum;
-
-    /** Number of requested BRAM
-     */
-    int BRAMNum;
-
-    /** Number of requested DSP
-     */
-    int DSPNum;
-
     /** Number of IO
      */
     int IONum;
@@ -34,12 +23,18 @@ class ProblemRegion {
     /** IO datas for the region
      */
     RegionIOData* regionIO;
-public:
-    virtual ~ProblemRegion();
 
-    ProblemRegion(std::ifstream *pIfstream);
+	/** Number of resources (CLBs, DSPs, BRAMs)
+	*/
+	std::map<Block, int> _resources;
+
+	int _regionID;
 
 public:
+
+    ProblemRegion(std::ifstream *pIfstream, int regionID);
+	virtual ~ProblemRegion();
+
     RegionType getType() const;
 
     int getCLBNum() const;
@@ -49,6 +44,10 @@ public:
     int getDSPNum() const;
 
     int getIONum() const;
+
+	int getID() const;
+
+	bool isContained(const std::map<Block, int>* availableResources) const;
 
     const RegionIOData getRegionIO(int) const;
 

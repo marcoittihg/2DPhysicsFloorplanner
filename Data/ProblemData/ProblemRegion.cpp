@@ -12,30 +12,32 @@ RegionType ProblemRegion::getType() const {
 }
 
 int ProblemRegion::getCLBNum() const {
-    return CLBNum;
+    return this->_resources.at(Block::CLB_BLOCK);
 }
 
 int ProblemRegion::getBRAMNum() const {
-    return BRAMNum;
+    return this->_resources.at(Block::BRAM_BLOCK);
 }
 
 int ProblemRegion::getDSPNum() const {
-    return DSPNum;
+    return this->_resources.at(Block::DSP_BLOCK);
 }
 
 int ProblemRegion::getIONum() const {
     return IONum;
 }
 
+int ProblemRegion::getID() const {
+	return this->_regionID;
+}
+
 const RegionIOData ProblemRegion::getRegionIO(int i) const {
     return regionIO[i];
 }
 
-ProblemRegion::~ProblemRegion() {
-    delete [] regionIO;
-}
+ProblemRegion::ProblemRegion(std::ifstream *pIfstream, int regionID) {
+	this->_regionID = regionID;
 
-ProblemRegion::ProblemRegion(std::ifstream *pIfstream) {
     char regType;
     *pIfstream >> regType;
 
@@ -47,9 +49,9 @@ ProblemRegion::ProblemRegion(std::ifstream *pIfstream) {
         throw std::invalid_argument("Wrong region type in problem regions");
     }
 
-    *pIfstream >> CLBNum;
-    *pIfstream >> BRAMNum;
-    *pIfstream >> DSPNum;
+	*pIfstream >> this->_resources[Block::CLB_BLOCK];
+	*pIfstream >> this->_resources[Block::BRAM_BLOCK];
+	*pIfstream >> this->_resources[Block::DSP_BLOCK];
 
     *pIfstream >> IONum;
 
@@ -69,10 +71,33 @@ ProblemRegion::ProblemRegion(std::ifstream *pIfstream) {
     }
 }
 
+ProblemRegion::~ProblemRegion() {
+	delete[] regionIO;
+}
+
 void ProblemRegion::setRegionIO(RegionIOData *regionIO) {
     ProblemRegion::regionIO = regionIO;
 }
 
 RegionIOData *ProblemRegion::getRegionIO() const {
     return regionIO;
+}
+
+bool ProblemRegion::isContained(const std::map<Block, int>* availableResources) const {
+
+	// Check for null pointer for given resource map
+	if (availableResources == NULL)
+		throw new std::exception("Given available resources map pointer cannot be null.");
+
+	// If given resources map contains forbidden blocks return false
+	if (availableResources->find(Block::FORBIDDEN_BLOCK) != availableResources->end()
+		&& availableResources->at(Block::FORBIDDEN_BLOCK) > 0)
+		return false;
+
+	// Check that for each resource there is enough in the availableResources map
+	for (auto it = this->_resources.begin(); it != this->_resources.end(); ++it) {
+		if (availableResources->at(it->first) < it->second) return false;
+	}
+
+	return true;
 }

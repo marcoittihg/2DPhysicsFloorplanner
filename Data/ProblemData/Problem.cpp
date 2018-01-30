@@ -78,20 +78,20 @@ Problem::Problem(std::ifstream* inFile) {
 
     board = new Board(inFile);
 
-    leftValidIDs = new bool[board->getDimension().get_y()];
-    for (int i = 0; i < board->getDimension().get_y(); i++) {
+    leftValidIDs = new bool[board->getDimension().get_x()];
+    for (int i = 0; i < board->getDimension().get_x(); i++) {
         *inFile >> leftValidIDs[i];
     }
 
-    rightValidIDs = new bool[board->getDimension().get_y()];
-    for (int i = 0; i < board->getDimension().get_y(); i++) {
+    rightValidIDs = new bool[board->getDimension().get_x()];
+    for (int i = 0; i < board->getDimension().get_x(); i++) {
         *inFile >> rightValidIDs[i];
     }
 
     *inFile >> numRegions;
     floorplanProblemRegion = new ProblemRegion*[numRegions];
     for (int k = 0; k < numRegions; ++k) {
-        floorplanProblemRegion[k] = new ProblemRegion(inFile);
+        floorplanProblemRegion[k] = new ProblemRegion(inFile, k);
     }
 
     interconnectionsMatrix = new int*[numRegions];

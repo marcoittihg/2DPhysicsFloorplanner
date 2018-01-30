@@ -194,8 +194,8 @@ void Physics::doStep() {
             float halfWidth = static_cast<float>(rb.getDimension().getX() * 0.5);
             float halfHeight = static_cast<float>(rb.getDimension().getY() * 0.5);
 
-            float boardWidth = board->getDimension().get_y();
-            float boardHeight = board->getDimension().get_x();
+            float boardWidth = board->getDimension().get_x();
+            float boardHeight = board->getDimension().get_y();
 
             Vector2 halfBoardDim = Vector2(boardWidth, boardHeight);
             halfBoardDim.multiply(0.5);

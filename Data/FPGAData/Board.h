@@ -9,6 +9,7 @@
 #include <fstream>
 #include "../../BaseUtils/Point2D.h"
 #include "Block.h"
+#include <map>
 
 /** Datas about a board of a specific problem
  */
@@ -21,10 +22,11 @@ class Board{
      */
     char tileHeight;
 
-    /** Interconnection matrix
-     *  blockMatrix[i][j] - return the block at position[i][j]
-     */
-    Block ** blockMatrix;
+	/**
+	*	Precalculated resources map from origin to given point
+	*	as [x][y] coordinates on the board
+	*/
+	std::map<Block, int>** _resourcesFromOrigin;
 public:
     virtual ~Board();
 
@@ -34,9 +36,6 @@ public:
 
     char getTileHeight() const;
 
-    /**
-     * @return the value of the block matrix at position [i][j]
-     */
-    Block getBlockMatrix(unsigned char, unsigned char) const;
+	const std::map<Block, int> getResourcesFor(Point2D start, Point2D dimension) const;
 };
 #endif //BUBBLEREGIONSFLOORPLANNER_BOARD_H

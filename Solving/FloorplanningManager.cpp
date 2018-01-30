@@ -94,8 +94,8 @@ void FloorplanningManager::onPysicsStep() {
                         FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
 
                         Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_y() / 2,
-                                                            -(float) boardDim.get_x() / 2);
+                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_x() / 2,
+                                                            -(float) boardDim.get_y() / 2);
 
                         Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),
                                                     newPlacement.getStartPosition().get_y());
@@ -153,7 +153,7 @@ void FloorplanningManager::onPysicsStep() {
                 }
 
                 Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-                Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+                Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_x() / 2, -(float)boardDim.get_y() / 2);
 
                 Vector2 regionPos = region.getRb()->getPosition();
 
@@ -403,8 +403,8 @@ void FloorplanningManager::onPysicsStep() {
                         FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
 
                         Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_y() / 2,
-                                                            -(float) boardDim.get_x() / 2);
+                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_x() / 2,
+                                                            -(float) boardDim.get_y() / 2);
 
                         Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),
                                                     newPlacement.getStartPosition().get_y());

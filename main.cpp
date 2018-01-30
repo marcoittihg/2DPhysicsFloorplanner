@@ -4,301 +4,86 @@
 #include "FileManagement/FileManager.h"
 #include "Solving/MainLoopManager.h"
 #include "Solving/FloorplanningManager.h"
+#include "Solving/PlacementsGenerator.h"
 #include <list>
 #include <cmath>
 #include <ctime>
+#include <map>
 
 using namespace std;
 
-void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasiblePlacements, Problem* problem){
-    std::cout<<"Generation feasible solutions"<<std::endl;
+float print_resource_usage(const Problem* problem) {
 
-    char tileHeight = problem->getBoard()->getTileHeight();
+	Point2D origin(0, 0);
+	const std::map<Block, int> totalResources = problem->getBoard()->getResourcesFor(origin, problem->getBoard()->getDimension());
 
-    //Linked list that contains all the feasible placements found
-    std::list<FeasiblePlacement>* feasiblePlacementsArray = new std::list<FeasiblePlacement>[problem->getNumRegions()];
+	int boardBlockCounter = totalResources.at(Block::CLB_BLOCK)
+		+ totalResources.at(Block::DSP_BLOCK)
+		+ totalResources.at(Block::BRAM_BLOCK);
 
-    for (int i = 0; i < problem->getNumRegions(); ++i) {
-        std::cout<<"Region: "<<i<<std::endl;
+	int problemBlockCounter = 0;
 
-        //For each region of the problem
-        ProblemRegion* problemRegion = const_cast<ProblemRegion *>(problem->getFloorplanProblemRegion(i));
-        RegionType  regionType = problemRegion->getType();
+	for (int i = 0; i < problem->getNumRegions(); ++i) {
+		ProblemRegion* pr = const_cast<ProblemRegion *>(problem->getFloorplanProblemRegion(i));
+		problemBlockCounter += pr->getCLBNum() + pr->getDSPNum() + pr->getBRAMNum();
+	}
 
-        for (int j = 0; j < problem->getBoard()->getDimension().get_y(); ++j) {
-            for (int k = j + 1; k < problem->getBoard()->getDimension().get_y(); ++k) {
-                //For each possible couple of indexes
+	float percentage = ((float)problemBlockCounter / (float)boardBlockCounter);
+	std::cout << "Density: " << percentage * 100 << "%" << std::endl;
 
-                if(regionType == RegionType::PR && ( problem->getLeftValidIDs(j) == 0 || problem->getRightValidIDs(k) == 0 ))
-                    continue;   //The region is PR and (j,k) are not feasible start and end points for that region
-
-                for (int h = 1; h <= problem->getBoard()->getDimension().get_x(); ++h) {
-                    //For each possible height of the board
-
-
-                    int CLBNum, BRAMNum, DSPNum, FORBBlock;
-                    CLBNum = BRAMNum = DSPNum = FORBBlock = 0;
-                    for (int t = 0; t <= problem->getBoard()->getDimension().get_x() - h; ++t) {
-                        //Check for each possible translation of the area
-
-                        //Calculate the number of blocks inside the area
-                        // (from index [j] to index [k] starting from height [l] to height [l+h])
-
-                        if(t == 0) {
-                            //If that is the first iteration sum all the blocks
-                            for (int m = t; m < t + h; ++m) {
-                                for (int n = j; n <= k; ++n) {
-                                    Block block = problem->getBoard()->getBlockMatrix(m, n);
-
-                                    switch (block) {
-                                        case Block::CLB_BLOCK :
-                                            CLBNum++;
-                                            break;
-                                        case Block::BRAM_BLOCK :
-                                            BRAMNum++;
-                                            break;
-                                        case Block::DSP_BLOCK :
-                                            DSPNum++;
-                                            break;
-                                        case Block::FORBIDDEN_BLOCK :
-                                            FORBBlock++;
-                                            break;
-                                    }
-                                }
-                            }
-                        }else{
-                            //If that's not the first iteration just subtract the first line and add the last one
-                            for (int n = j; n <= k ; ++n) {
-                                //Subtract the first one
-                                Block block = problem->getBoard()->getBlockMatrix(t - 1, n);
-
-                                switch (block) {
-                                    case Block::CLB_BLOCK :
-                                        CLBNum--;
-                                        break;
-                                    case Block::BRAM_BLOCK :
-                                        BRAMNum--;
-                                        break;
-                                    case Block::DSP_BLOCK :
-                                        DSPNum--;
-                                        break;
-                                    case Block::FORBIDDEN_BLOCK :
-                                        FORBBlock--;
-                                        break;
-                                }
-                            }
-
-                            for (int n = j; n <= k ; ++n) {
-                                //Add the last one
-                                Block block = problem->getBoard()->getBlockMatrix(t + h - 1, n);
-
-                                switch (block) {
-                                    case Block::CLB_BLOCK :
-                                        CLBNum++;
-                                        break;
-                                    case Block::BRAM_BLOCK :
-                                        BRAMNum++;
-                                        break;
-                                    case Block::DSP_BLOCK :
-                                        DSPNum++;
-                                        break;
-                                    case Block::FORBIDDEN_BLOCK :
-                                        FORBBlock++;
-                                        break;
-                                }
-                            }
-                        }
-
-                        if (FORBBlock > 0) continue; //If there is a forbidden block the solution is not feasible
-
-                        if (CLBNum < problemRegion->getCLBNum() ||
-                            BRAMNum < problemRegion->getBRAMNum() ||
-                            DSPNum < problemRegion->getDSPNum()) {
-                            continue;       //The area does not have the required blocks
-                        }
-
-                        if(regionType == RegionType::PR && (h % tileHeight != 0 || t % tileHeight != 0))
-                            continue;
-
-                        FeasiblePlacement *newPlacement = new FeasiblePlacement();
-                        Point2D startPosition, dimension;
-
-                        startPosition.set_x(j);
-                        startPosition.set_y(t);
-                        newPlacement->setStartPosition(startPosition);
-
-                        dimension.set_x(k - j +1);
-                        dimension.set_y(h);
-                        newPlacement->setDimension(dimension);
-
-                        newPlacement->setRegionType(problemRegion->getType());
-
-                        newPlacement->setAreaCost(
-                                static_cast<unsigned int>(CLBNum * problem->getCLBCost() +
-                                                          BRAMNum * problem->getBRAMCost() +
-                                                          DSPNum * problem->getDSPCost())
-                        );
-
-
-                        //If the aspect ratio is to high or to little the region is removed
-                        /*float xdy = ((float)newPlacement->dimension.get_x() / (float)newPlacement->dimension.get_y());
-                        float ydx = ((float)newPlacement->dimension.get_y() / (float)newPlacement->dimension.get_x());
-
-                        if(xdy < 0.2 || ydx < 0.2)
-                            continue;*/
-
-                        /*Check if there are some areas that contains the just founded area
-                        * or if there is at least one area that contain the just founded area
-                        * In the first case the bigger areas must be removed since we have found a better solution
-                        * In the second case the just founded solution is not a good solution since we already
-                        * have found one area that match the requirements and is contained in the one that i have just found
-                        **/
-                        bool foundLittler = false;
-                        for (std::list<FeasiblePlacement>::iterator it = feasiblePlacementsArray[i].begin();
-                             it != feasiblePlacementsArray[i].end();
-                             it++) {
-                            //check if the new founded area is contained in another one
-                            if(newPlacement->checkContains(&(*it))){
-                                foundLittler = true;
-                                break;
-                            }
-                        }
-
-                        //If found a littler one the new founded area is useless
-                        if(foundLittler) break;
-
-
-                        std::list<FeasiblePlacement> elementsToRemove;
-                        for (std::list<FeasiblePlacement>::iterator it = feasiblePlacementsArray[i].begin();
-                             it != feasiblePlacementsArray[i].end();
-                             it++) {
-                            //check if the new founded area is contained in another one
-                            if(it->checkContains(newPlacement)){
-                                elementsToRemove.push_back(*it);
-                            }
-                        }
-
-
-                        //Remove all the elements to remove
-                        for (std::list<FeasiblePlacement>::iterator it = elementsToRemove.begin(); it != elementsToRemove.end() ; ++it) {
-                            feasiblePlacementsArray[i].erase(it);
-                        }
-                        //feasiblePlacementsArray[i].erase(elementsToRemove.begin(), elementsToRemove.end());
-
-                        //add the new found area
-                        feasiblePlacementsArray[i].push_back(*newPlacement);
-                    }
-                }
-            }
-        }
-    }
-
-
-    //Resize the vector of all the feasible placements
-    // to make it able to fit all the regions
-    /*feasiblePlacements->resize(problem->getNumRegions());
-    for (int j1 = 0; j1 < problem->getNumRegions(); ++j1) {
-        feasiblePlacements->at(j1).resize(feasiblePlacementsArray[j1].size());
-    }*/
-
-    std::cout<<"Building final feasible regions array"<<std::endl;
-
-    feasiblePlacements->resize(problem->getNumRegions());
-    for (int i = 0; i < problem->getNumRegions(); ++i) {
-        //For each region of the problem
-        std::cout << i << std::endl;
-
-        for (std::list<FeasiblePlacement>::iterator it = feasiblePlacementsArray[i].begin();
-             it != feasiblePlacementsArray[i].end();
-             it++) {
-            feasiblePlacements->at(i).push_back(*it);
-        }
-
-    }
-
-    std::cout<<". . . Finish"<< std::endl;
-
-    //Deleting useless generated linked lists
-    delete[] feasiblePlacementsArray;
-
+	return percentage;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     time_t seconds;
     seconds = time (NULL);
 
     cout << "*------* STARTING *------*" << endl;
     cout << "Loading data problem from file\n" << endl;
+
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("F:/Documenti/Visual Studio 2017/Projects/BubbleRegionsFloorplanner/Problems/10020");
+        problem = FileManager::getINSTANCE().readProblem("F:/Documenti/Visual Studio 2017/Projects/BubbleRegionsFloorplanner/Problems/10021");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
+	
+	float percentage = print_resource_usage(problem);
 
-    int boardBlockCounter = 0;
-    int problemBlockCounter = 0;
+	//float maxArea = 2*std::exp(-problem->getNumRegions()/20)+1.05;
+	float maxArea = 1.0 / 3.0 / percentage + 2.0 / 3.0 + 0.05;
+	std::cout << "Problem max area: " << maxArea << std::endl;
 
-    Board* board = problem->getBoard();
-    for (int i = 0; i < board->getDimension().get_x(); ++i) {
-        for (int j = 0; j < board->getDimension().get_y(); ++j) {
-            Block block = board->getBlockMatrix(i,j);
-            if(block == Block::CLB_BLOCK || block == Block::DSP_BLOCK || block == Block::BRAM_BLOCK)
-                boardBlockCounter++;
-        }
-    }
+	PlacementsGenerator* pg = new PlacementsGenerator(problem);
 
-    for (int i = 0; i < problem->getNumRegions(); ++i) {
-        ProblemRegion* pr = const_cast<ProblemRegion *>(problem->getFloorplanProblemRegion(i));
-        problemBlockCounter += pr->getCLBNum() + pr->getDSPNum() + pr->getBRAMNum();
-    }
+    std::vector<std::vector<FeasiblePlacement>> feasiblePlacements = *(pg->getFeasiblePlacements(maxArea));
 
-    float percentage = ((float)problemBlockCounter / (float)boardBlockCounter);
-    std::cout << "Density: " << percentage * 100 <<"%"<<std::endl;
+	delete pg;
 
-    std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
-    getAllFeasiblePlacements(&feasiblePlacements, problem);
+	int maxP = 0, minP = std::numeric_limits<int>::max(), allP = 0;
+
+	for (int rID = 0; rID < feasiblePlacements.size(); rID++) {
+		int p = feasiblePlacements.at(rID).size();
+
+		if (p > maxP)
+			maxP = p;
+
+		if (p < minP)
+			minP = p;
+
+		allP += p;
+
+		cout << "Region " << rID << " has " << p << " feasible placements." << endl;
+	}
+
+	cout << "Minimum placements per region: " << minP << endl;
+	cout << "Maximum placements per region: " << maxP << endl;
+	cout << "Avarage placements per region: " << allP / feasiblePlacements.size() << endl;
 
     time_t seconds2;
     seconds2 = time (NULL);
-    std::cout<<"Feasible placements search time : "<<seconds2 - seconds<<std::endl;
+	std::cout << "Feasible placements search time : " << seconds2 - seconds << std::endl;
     seconds = seconds2;
-
-    //Keep only best regions by area
-
-    //float maxArea = 2*std::exp(-problem->getNumRegions()/20)+1.05;
-    float maxArea = 1.0/3.0 / percentage + 2.0/3.0 + 0.05;
-    std::cout<<"Problem max area: "<<maxArea<<std::endl;
-    for (int i = 0; i < feasiblePlacements.size(); ++i) {
-        std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
-
-        //Search for best area value
-        int bestAreaValue = std::numeric_limits<unsigned short>::max();
-        for (int j = 0; j < placementVector.size(); ++j) {
-            FeasiblePlacement fp = placementVector.at(j);
-
-            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
-
-            if(area < bestAreaValue){
-                bestAreaValue = area;
-            }
-        }
-
-        //Eliminate placements with area bigger than bestAreaValue + x%
-        int l = 0;
-        for (int k = 0; k < feasiblePlacements.at(i).size(); ++k) {
-            FeasiblePlacement fp = feasiblePlacements.at(i).at(k);
-
-
-            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
-
-            if(area <= bestAreaValue * maxArea) {
-                feasiblePlacements.at(i).at(l) = placementVector.at(k);
-                l++;
-            }
-        }
-        feasiblePlacements.at(i).resize(l);
-    }
 
     //Precalculate resorces of each placement
     for (int i = 0; i < feasiblePlacements.size(); ++i) {

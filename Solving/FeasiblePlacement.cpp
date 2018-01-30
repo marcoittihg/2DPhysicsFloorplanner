@@ -4,6 +4,17 @@
 
 #include "FeasiblePlacement.h"
 
+FeasiblePlacement::FeasiblePlacement() {
+
+}
+
+FeasiblePlacement::FeasiblePlacement(Point2D start, Point2D dimension, RegionType rType, int aCost) {
+	this->startPosition = start;
+	this->dimension = dimension;
+	this->regionType = rType;
+	this->areaCost = aCost;
+}
+
 const Point2D &FeasiblePlacement::getStartPosition() const {
     return startPosition;
 }
@@ -41,7 +52,7 @@ unsigned int FeasiblePlacement::getAreaCost() const {
 }
 
 void FeasiblePlacement::setAreaCost(unsigned int areaCost) {
-    FeasiblePlacement::areaCost = areaCost;
+    this->areaCost = areaCost;
 }
 
 unsigned int FeasiblePlacement::getScoreLoss() const {
@@ -49,7 +60,7 @@ unsigned int FeasiblePlacement::getScoreLoss() const {
 }
 
 void FeasiblePlacement::setScoreLoss(unsigned int scoreLoss) {
-    FeasiblePlacement::scoreLoss = scoreLoss;
+    this->scoreLoss = scoreLoss;
 }
 
 
@@ -60,25 +71,20 @@ bool FeasiblePlacement::checkContains(FeasiblePlacement * feasiblePlacement)cons
            this->startPosition.get_y() + this->dimension.get_y() >= feasiblePlacement->startPosition.get_y() + feasiblePlacement->dimension.get_y();
 }
 
+int FeasiblePlacement::getArea() const {
+	return this->dimension.get_x() * this->dimension.get_y();
+}
+
 void FeasiblePlacement::calculateResources(Board* board) {
-    resources.BRAM = resources.CLB = resources.DSP = 0;
+	resources.BRAM = resources.CLB = resources.DSP = 0;
 
-    for (int i = startPosition.get_y(); i < startPosition.get_y() + dimension.get_y(); ++i) {
-        for (int j = startPosition.get_x(); j < startPosition.get_x() + dimension.get_x(); ++j) {
-            Block block = board->getBlockMatrix(i, j);
+	const std::map<Block, int> resources = board->getResourcesFor(this->startPosition, this->dimension);
 
-            switch(block){
-                case Block::CLB_BLOCK : resources.CLB++;
-                    break;
-                case Block::DSP_BLOCK : resources.DSP++;
-                    break;
-                case Block::BRAM_BLOCK: resources.BRAM++;
-                    break;
-            }
-        }
-    }
+	this->resources.CLB = resources.at(Block::CLB_BLOCK);
+	this->resources.DSP = resources.at(Block::DSP_BLOCK);
+	this->resources.BRAM = resources.at(Block::BRAM_BLOCK);
 }
 
 const Resources &FeasiblePlacement::getResources() const {
-    return resources;
+    return this->resources;
 }

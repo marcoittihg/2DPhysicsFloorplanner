@@ -43,6 +43,10 @@ class FeasiblePlacement {
     Resources resources;
 
 public:
+
+	FeasiblePlacement();
+	FeasiblePlacement(Point2D start, Point2D dimension, RegionType rType, int aCost);
+
     const Point2D &getStartPosition() const;
 
     void setStartPosition(const Point2D &startPosition);
@@ -73,6 +77,8 @@ public:
 
     const Resources &getResources() const;
 
+	int getArea() const;
+
     /**
      * Check if two placements collides
      * @return The result of the check
@@ -86,7 +92,7 @@ public:
         Point2D dim2 = fp2->dimension;
 
 
-        if(fp1->regionType == RegionType ::PR){
+        if(fp1->regionType == RegionType::PR){
             Point2D oldPos = startPos1;
 
             startPos1.set_y((startPos1.get_y() / tileHeight)* tileHeight);
@@ -97,7 +103,7 @@ public:
             }
         }
 
-        if(fp2->regionType == RegionType ::PR){
+        if(fp2->regionType == RegionType::PR){
             Point2D oldPos = startPos2;
 
             startPos2.set_y((startPos2.get_y() / tileHeight)* tileHeight);

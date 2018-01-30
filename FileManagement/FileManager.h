@@ -5,12 +5,8 @@
 #ifndef BUBBLEREGIONSFLOORPLANNER_FILEMANAGER_H
 #define BUBBLEREGIONSFLOORPLANNER_FILEMANAGER_H
 
-
-
-#include <iostream>
-#include <vector>
 #include "../Data/ProblemData/Problem.h"
-#include "../Solving/FeasiblePlacement.h"
+#include <fstream>
 
 class FileManager {
 
@@ -27,11 +23,6 @@ public:
      * @return The instance of the problem generated from the file
      */
     Problem* readProblem(std::string fileName);
-
-    void writeFeasiblePlacementToFile(std::vector<std::vector<FeasiblePlacement>> fp,Problem* problem);
-
-    void readFeasiblePlacementToFile(std::string filePath, std::vector<std::vector<FeasiblePlacement>>* fp);
-
 
     //void writeSolutionToFile(Problem *pProblem, SolutionState *pState, std::vector<std::vector<FeasiblePlacement>> *pVector);
 };
