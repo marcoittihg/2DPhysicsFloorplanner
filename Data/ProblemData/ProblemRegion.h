@@ -37,7 +37,7 @@ class ProblemRegion {
 public:
     virtual ~ProblemRegion();
 
-    ProblemRegion(std::__1::basic_ifstream<char> *pIfstream);
+    ProblemRegion(std::ifstream *pIfstream);
 
 public:
     RegionType getType() const;

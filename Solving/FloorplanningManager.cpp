@@ -2,6 +2,8 @@
 // Created by Marco on 31/12/17.
 //
 
+#define _USE_MATH_DEFINES
+
 #include <thread>
 #include <iostream>
 #include <cmath>
@@ -271,7 +273,7 @@ void FloorplanningManager::onPysicsStep() {
         if(_time - lastAlternativeRefreshTime > closestAlternativeRefreshTime) {
 
             //True if the region of index i has been already considered
-            bool consideredRegions[regionNum];
+            bool* consideredRegions = new bool[regionNum];
             for (int i = 0; i < regionNum; ++i) {
                 consideredRegions[i] = false;
             }

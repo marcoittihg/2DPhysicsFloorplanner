@@ -28,7 +28,7 @@ class Board{
 public:
     virtual ~Board();
 
-    Board(std::__1::basic_ifstream<char> *pIfstream);
+    Board(std::ifstream *pIfstream);
 
     const Point2D &getDimension() const;
 

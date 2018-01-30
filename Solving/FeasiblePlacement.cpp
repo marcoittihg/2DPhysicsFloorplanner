@@ -3,7 +3,6 @@
 //
 
 #include "FeasiblePlacement.h"
-#include <GLUT/glut.h>
 
 const Point2D &FeasiblePlacement::getStartPosition() const {
     return startPosition;

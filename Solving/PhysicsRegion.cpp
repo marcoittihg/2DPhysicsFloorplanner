@@ -317,7 +317,7 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
     if(minIndexes.empty()){
         //No placement found, need to select it in an other way
 
-        Resources res[regNum];
+        Resources* res = new Resources[regNum];
 
         Board* board = Physics::getINSTANCE().getBoard();
 

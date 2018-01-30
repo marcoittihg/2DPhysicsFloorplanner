@@ -121,7 +121,7 @@ void Physics::doStep() {
 
     for (int j = 0; j < regionNum; ++j) {
         Vector2 dim = rigidbodies[j].getDimension();
-        float min = std::min(dim.getX(),dim.getY());
+        float min = std::fmin(dim.getX(),dim.getY());
         if(min < maxDistance)
             maxDistance = min;
     }

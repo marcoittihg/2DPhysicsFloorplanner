@@ -6,6 +6,7 @@
 #include "Solving/FloorplanningManager.h"
 #include <list>
 #include <cmath>
+#include <ctime>
 
 using namespace std;
 
@@ -230,7 +231,7 @@ int main() {
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/Problems/10020");
+        problem = FileManager::getINSTANCE().readProblem("F:/Documenti/Visual Studio 2017/Projects/BubbleRegionsFloorplanner/Problems/10020");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -256,10 +257,7 @@ int main() {
     std::cout << "Density: " << percentage * 100 <<"%"<<std::endl;
 
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
-    //getAllFeasiblePlacements(&feasiblePlacements, problem);
-
-    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt", &feasiblePlacements);
-    //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
+    getAllFeasiblePlacements(&feasiblePlacements, problem);
 
     time_t seconds2;
     seconds2 = time (NULL);
@@ -267,33 +265,6 @@ int main() {
     seconds = seconds2;
 
     //Keep only best regions by area
-    /*
-    for (int i = 0; i < feasiblePlacements.size(); ++i) {
-        std::list<FeasiblePlacement> placementsList{std::make_move_iterator(
-                std::begin(feasiblePlacements.at(i))), std::make_move_iterator(std::end(feasiblePlacements.at(i)))
-        };
-
-        int bestAreaValue = std::numeric_limits<unsigned short>::max();
-
-        for (std::list<FeasiblePlacement>::iterator it = placementsList.begin(); it != placementsList.end(); ++it) {
-            FeasiblePlacement fp = *it;
-
-            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
-
-            if (area < bestAreaValue) {
-                bestAreaValue = area;
-            }
-        }
-
-        placementsList.remove_if([bestAreaValue](FeasiblePlacement placement) {
-            unsigned short area = placement.getDimension().get_x() * placement.getDimension().get_y();
-            return area > bestAreaValue * 1.2;
-        });
-
-        std::vector<FeasiblePlacement> newVector{placementsList.begin(), placementsList.end()};
-        feasiblePlacements.at(i) = newVector;
-    }*/
-
 
     //float maxArea = 2*std::exp(-problem->getNumRegions()/20)+1.05;
     float maxArea = 1.0/3.0 / percentage + 2.0/3.0 + 0.05;
@@ -364,7 +335,7 @@ int main() {
     //Link all the interconnected regions
     for (int i = 0; i < numRegions; ++i) {
         for (int j = i + 1; j < numRegions; ++j) {
-            int numWire = std::max(problem->getInterconnectionsMatrix(i,j), problem->getInterconnectionsMatrix(j,i) );
+            int numWire = std::fmax(problem->getInterconnectionsMatrix(i,j), problem->getInterconnectionsMatrix(j,i) );
 
             if(numWire <= 0)
                 continue;

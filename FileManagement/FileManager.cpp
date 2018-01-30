@@ -6,6 +6,7 @@
 #include "FileManager.h"
 #include "../Data/ProblemData/RegionType.h"
 #include <fstream>
+#include <string>
 
 Problem* FileManager::readProblem(std::string fileName) {
     //Open the file

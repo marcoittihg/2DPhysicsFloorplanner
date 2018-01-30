@@ -35,7 +35,7 @@ ProblemRegion::~ProblemRegion() {
     delete [] regionIO;
 }
 
-ProblemRegion::ProblemRegion(std::__1::basic_ifstream<char> *pIfstream) {
+ProblemRegion::ProblemRegion(std::ifstream *pIfstream) {
     char regType;
     *pIfstream >> regType;
 
