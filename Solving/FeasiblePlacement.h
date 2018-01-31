@@ -73,6 +73,8 @@ public:
 
     const Resources &getResources() const;
 
+    void setResources(const Resources &resources);
+
     /**
      * Check if two placements collides
      * @return The result of the check

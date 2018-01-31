@@ -9,6 +9,7 @@
 #include <fstream>
 #include "../../BaseUtils/Point2D.h"
 #include "Block.h"
+#include "../../Solving/Resources.h"
 
 /** Datas about a board of a specific problem
  */
@@ -25,6 +26,11 @@ class Board{
      *  blockMatrix[i][j] - return the block at position[i][j]
      */
     Block ** blockMatrix;
+
+    /** Matrix containig the cumulative resource matrix for the board
+     */
+    Resources** cumulativeResources = nullptr;
+
 public:
     virtual ~Board();
 
@@ -38,5 +44,9 @@ public:
      * @return the value of the block matrix at position [i][j]
      */
     Block getBlockMatrix(unsigned char, unsigned char) const;
+
+    void computeCumulativeResourceMatrix();
+
+    Resources getBoardResources(Point2D start, Point2D end);
 };
 #endif //BUBBLEREGIONSFLOORPLANNER_BOARD_H

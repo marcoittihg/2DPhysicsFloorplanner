@@ -42,7 +42,7 @@ void PhysicsRegion::setInterconnectedRegions(const std::vector<PhysicsRegion *> 
 }
 
 void PhysicsRegion::onPhysicsStart() {
-
+    floatingTime = 0;
 }
 
 void PhysicsRegion::fixedPhysicsStep() {
@@ -153,6 +153,9 @@ PhysicsRegionState PhysicsRegion::getRegionState() const {
 }
 
 void PhysicsRegion::setRegionState(PhysicsRegionState regionState) {
+    if(PhysicsRegion::regionState == PhysicsRegionState::PLACED && regionState == PhysicsRegionState::FLOATING)
+        floatingTime = 0;
+
     PhysicsRegion::regionState = regionState;
 }
 
@@ -435,10 +438,12 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     stabPoint.add(Vector2(pMidX, pMidY));
 
+    floatingTime++;
 
-    anchorForceMultiplier = 1
+    anchorForceMultiplier = 0.1
                             + 10 / (stabPoint.mangnitude()+0.1)
-                            + 100 / (float)placementNum;
+                            + 100 / (float)placementNum
+                            + floatingTime * 0.1;
 
     preferedAnchorPoint = Vector2(
             prefPlacemnt.getStartPosition().get_x() + prefPlacemnt.getDimension().get_x() * 0.5,

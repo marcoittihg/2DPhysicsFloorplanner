@@ -9,7 +9,7 @@
 
 using namespace std;
 
-void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasiblePlacements, Problem* problem){
+void getAllFeasiblePlacements2(std::vector<std::vector<FeasiblePlacement>>* feasiblePlacements, Problem* problem){
     std::cout<<"Generation feasible solutions"<<std::endl;
 
     char tileHeight = problem->getBoard()->getTileHeight();
@@ -139,19 +139,13 @@ void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasi
                         );
 
 
-                        //If the aspect ratio is to high or to little the region is removed
-                        /*float xdy = ((float)newPlacement->dimension.get_x() / (float)newPlacement->dimension.get_y());
-                        float ydx = ((float)newPlacement->dimension.get_y() / (float)newPlacement->dimension.get_x());
 
-                        if(xdy < 0.2 || ydx < 0.2)
-                            continue;*/
-
-                        /*Check if there are some areas that contains the just founded area
-                        * or if there is at least one area that contain the just founded area
-                        * In the first case the bigger areas must be removed since we have found a better solution
-                        * In the second case the just founded solution is not a good solution since we already
-                        * have found one area that match the requirements and is contained in the one that i have just found
-                        **/
+                        //Check if there are some areas that contains the just founded area
+                        // or if there is at least one area that contain the just founded area
+                        // In the first case the bigger areas must be removed since we have found a better solution
+                        // In the second case the just founded solution is not a good solution since we already
+                        // have found one area that match the requirements and is contained in the one that i have just found
+                        //
                         bool foundLittler = false;
                         for (std::list<FeasiblePlacement>::iterator it = feasiblePlacementsArray[i].begin();
                              it != feasiblePlacementsArray[i].end();
@@ -193,12 +187,6 @@ void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasi
     }
 
 
-    //Resize the vector of all the feasible placements
-    // to make it able to fit all the regions
-    /*feasiblePlacements->resize(problem->getNumRegions());
-    for (int j1 = 0; j1 < problem->getNumRegions(); ++j1) {
-        feasiblePlacements->at(j1).resize(feasiblePlacementsArray[j1].size());
-    }*/
 
     std::cout<<"Building final feasible regions array"<<std::endl;
 
@@ -222,6 +210,102 @@ void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasi
 
 }
 
+
+void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasiblePlacements, Problem* problem){
+
+    Board* board = problem->getBoard();
+    char tileHeight = board->getTileHeight();
+
+    int minRegionHeight[problem->getNumRegions()];
+    bool alreadyFound[problem->getNumRegions()];
+
+
+    //For each pair of column indexes
+    for (int i = 0; i < board->getDimension().get_y(); ++i) {
+
+        //Reset min region height values
+        std::fill(minRegionHeight, minRegionHeight + problem->getNumRegions(), std::numeric_limits<int>::max());
+
+        for (int j = i+1  ; j < board->getDimension().get_y(); ++j) {
+
+            bool isPRColumn = problem->getLeftValidIDs(i) && problem->getRightValidIDs(j);
+
+            //For each possible translation
+            for (int t = 0; t <= board->getDimension().get_x(); ++t) {
+
+                std::fill(alreadyFound, alreadyFound + problem->getNumRegions(), false);
+
+                //For each possible height
+                for (int h = 1; h <= board->getDimension().get_x() - t; ++h) {
+
+                    //Get resource value
+                    Resources res = board->getBoardResources( Point2D(t, i) , Point2D(t+h-1, j) );
+
+                    if(res.FORBIDDEN > 0) //Found a forbidden.. no more possible expansions
+                        break;
+
+                    bool isTranslationHeightPRCompl = t % tileHeight == 0 && h % tileHeight == 0;
+
+                    //For each region of the problem
+                    for (int r = 0; r < problem->getNumRegions(); ++r) {
+                        if(minRegionHeight[r] <= h)
+                            continue;
+
+                        if(alreadyFound[r])
+                            continue;
+
+                        ProblemRegion* problemRegion = const_cast<ProblemRegion *>(problem->getFloorplanProblemRegion(r));
+
+                        if(problemRegion->getType() == RegionType::PR &&
+                           (!isTranslationHeightPRCompl || !isPRColumn))
+                            continue;
+
+                        if(
+                                problemRegion->getCLBNum() <= res.CLB &&
+                                problemRegion->getDSPNum() <= res.DSP &&
+                                problemRegion->getBRAMNum() <= res.BRAM
+                                ){
+
+                            alreadyFound[r] = true;
+                            minRegionHeight[r] = std::min(minRegionHeight[r], h);
+
+                            FeasiblePlacement newFp;
+
+                            newFp.setDimension(Point2D(j - i + 1, h));
+
+                            newFp.setRegionType(problemRegion->getType());
+
+                            newFp.setAreaCost(
+                                    static_cast<unsigned int>(res.CLB * problem->getCLBCost() +
+                                                                        res.DSP * problem->getDSPCost() +
+                                                                        res.BRAM * problem->getBRAMCost())
+                            );
+
+                            //Check for all the translations that do not contain a forbidden block
+                            for (int t2 = t; t2 <= board->getDimension().get_x() - h; ++t2) {
+                                if(problemRegion->getType() == RegionType::PR && t2 % tileHeight != 0)
+                                    continue;
+
+                                Resources res2 = board->getBoardResources( Point2D(t2, i) , Point2D(t2+h-1, j) );
+
+                                if(res2.FORBIDDEN > 0)
+                                    continue;
+
+                                newFp.setStartPosition(Point2D(i, t2));
+                                newFp.setResources(res2);
+
+                                feasiblePlacements->at(r).push_back(newFp);
+                            }
+                        }
+                    }
+
+                }
+
+            }
+        }
+    }
+}
+
 int main() {
     time_t seconds;
     seconds = time (NULL);
@@ -230,7 +314,7 @@ int main() {
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/Problems/10020");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/RealProblems/25_85.txt");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -239,6 +323,8 @@ int main() {
     int problemBlockCounter = 0;
 
     Board* board = problem->getBoard();
+    board->computeCumulativeResourceMatrix();
+
     for (int i = 0; i < board->getDimension().get_x(); ++i) {
         for (int j = 0; j < board->getDimension().get_y(); ++j) {
             Block block = board->getBlockMatrix(i,j);
@@ -256,10 +342,11 @@ int main() {
     std::cout << "Density: " << percentage * 100 <<"%"<<std::endl;
 
     std::vector<std::vector<FeasiblePlacement>> feasiblePlacements;
-    //getAllFeasiblePlacements(&feasiblePlacements, problem);
+    feasiblePlacements.resize(problem->getNumRegions());
+    getAllFeasiblePlacements(&feasiblePlacements, problem);
 
-    FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt", &feasiblePlacements);
-    //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
+    //FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt", &feasiblePlacements);
+    FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
 
     time_t seconds2;
     seconds2 = time (NULL);
@@ -296,7 +383,7 @@ int main() {
 
 
     //float maxArea = 2*std::exp(-problem->getNumRegions()/20)+1.05;
-    float maxArea = 1.0/3.0 / percentage + 2.0/3.0 + 0.05;
+    float maxArea = 1.0 / 2.0 / percentage + 1.0 / 2.0;
     std::cout<<"Problem max area: "<<maxArea<<std::endl;
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
         std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
@@ -321,21 +408,12 @@ int main() {
 
             unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
 
-            if(area <= bestAreaValue * maxArea) {
+            if(area <= bestAreaValue * 1.1) {
                 feasiblePlacements.at(i).at(l) = placementVector.at(k);
                 l++;
             }
         }
         feasiblePlacements.at(i).resize(l);
-    }
-
-    //Precalculate resorces of each placement
-    for (int i = 0; i < feasiblePlacements.size(); ++i) {
-        std::vector<FeasiblePlacement> placementVector = feasiblePlacements.at(i);
-
-        for (int j = 0; j < placementVector.size(); ++j) {
-            placementVector.at(j).calculateResources(problem->getBoard());
-        }
     }
 
     //Create regions

@@ -67,3 +67,61 @@ Board::~Board() {
     }
     delete [] blockMatrix;
 }
+
+void Board::computeCumulativeResourceMatrix() {
+    //Allocate the matrix if not yet allocated
+    if(cumulativeResources == nullptr) {
+        cumulativeResources = new Resources *[dimension.get_y()];
+        for (int j = 0; j < dimension.get_y(); ++j) {
+            cumulativeResources[j] = new Resources[dimension.get_x()];
+        }
+    }
+
+    //Compute matrix
+    for (int i = 0; i < dimension.get_y(); ++i) {
+        for (int j = 0; j < dimension.get_x(); ++j) {
+            if(i==0 && j== 0) {
+                cumulativeResources[0][0].addBlock(blockMatrix[0][0]);
+                continue;
+            }
+
+            if(i == 0){
+                cumulativeResources[i][j] = cumulativeResources[0][j-1];
+                cumulativeResources[i][j].addBlock(blockMatrix[j][i]);
+                continue;
+            }
+
+            if(j == 0){
+                cumulativeResources[i][j] = cumulativeResources[i-1][j];
+                cumulativeResources[i][j].addBlock(blockMatrix[j][i]);
+                continue;
+            }
+
+            //i and j != 0
+            cumulativeResources[i][j].add(cumulativeResources[i-1][j]);
+            cumulativeResources[i][j].add(cumulativeResources[i][j-1]);
+            cumulativeResources[i][j].sub(cumulativeResources[i-1][j-1]);
+            cumulativeResources[i][j].addBlock(blockMatrix[j][i]);
+        }
+    }
+
+}
+
+Resources Board::getBoardResources(Point2D start, Point2D end) {
+    Resources res;
+
+    res.add(cumulativeResources[end.get_y()][end.get_x()]);
+
+    if(start.get_x() != 0 && start.get_y() != 0) {
+        res.add(cumulativeResources[start.get_y() - 1][start.get_x() - 1]);
+    }
+
+    if(start.get_x() != 0){
+        res.sub(cumulativeResources[end.get_y()][start.get_x() - 1]);
+    }
+    if(start.get_y() != 0){
+        res.sub(cumulativeResources[start.get_y() - 1][end.get_x()]);
+    }
+
+    return res;
+}

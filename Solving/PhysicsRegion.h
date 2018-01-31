@@ -67,6 +67,8 @@ class PhysicsRegion {
      */
     RegionIOData* regionIO;
 
+    int floatingTime;
+
 public:
 
     PhysicsRegion();

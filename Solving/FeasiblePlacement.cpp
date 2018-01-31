@@ -61,25 +61,11 @@ bool FeasiblePlacement::checkContains(FeasiblePlacement * feasiblePlacement)cons
            this->startPosition.get_y() + this->dimension.get_y() >= feasiblePlacement->startPosition.get_y() + feasiblePlacement->dimension.get_y();
 }
 
-void FeasiblePlacement::calculateResources(Board* board) {
-    resources.BRAM = resources.CLB = resources.DSP = 0;
-
-    for (int i = startPosition.get_y(); i < startPosition.get_y() + dimension.get_y(); ++i) {
-        for (int j = startPosition.get_x(); j < startPosition.get_x() + dimension.get_x(); ++j) {
-            Block block = board->getBlockMatrix(i, j);
-
-            switch(block){
-                case Block::CLB_BLOCK : resources.CLB++;
-                    break;
-                case Block::DSP_BLOCK : resources.DSP++;
-                    break;
-                case Block::BRAM_BLOCK: resources.BRAM++;
-                    break;
-            }
-        }
-    }
-}
 
 const Resources &FeasiblePlacement::getResources() const {
     return resources;
+}
+
+void FeasiblePlacement::setResources(const Resources &resources) {
+    FeasiblePlacement::resources = resources;
 }

@@ -11,7 +11,7 @@
 
 void FloorplanningManager::start() {
     _time = 0;
-    wireStabTime = 380.0;
+    wireStabTime = 200.0;
     closestAlternativeRefreshTime = 80.0;
     lastAlternativeRefreshTime = 0.0;
 
@@ -216,7 +216,7 @@ void FloorplanningManager::onPysicsStep() {
 
 
         if(_time > 100)
-            Physics::getINSTANCE().setSeparationCoeff(0+(_time-100)*(_time-100));
+            Physics::getINSTANCE().setSeparationCoeff(0+1000000* (_time-100)*(_time-100)/(wireStabTime - 100) / (wireStabTime - 100));
         else
             Physics::getINSTANCE().setSeparationCoeff(0);
 
