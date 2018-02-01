@@ -310,6 +310,8 @@ int main() {
     time_t seconds;
     seconds = time (NULL);
 
+    FloorplanningManager::getINSTANCE().setStartTime(seconds);
+
     cout << "*------* STARTING *------*" << endl;
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
@@ -346,7 +348,7 @@ int main() {
     getAllFeasiblePlacements(&feasiblePlacements, problem);
 
     //FileManager::getINSTANCE().readFeasiblePlacementToFile("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/cmake-build-debug/10020Regions.txt", &feasiblePlacements);
-    FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
+    //FileManager::getINSTANCE().writeFeasiblePlacementToFile(feasiblePlacements, problem);
 
     time_t seconds2;
     seconds2 = time (NULL);
@@ -354,35 +356,6 @@ int main() {
     seconds = seconds2;
 
     //Keep only best regions by area
-    /*
-    for (int i = 0; i < feasiblePlacements.size(); ++i) {
-        std::list<FeasiblePlacement> placementsList{std::make_move_iterator(
-                std::begin(feasiblePlacements.at(i))), std::make_move_iterator(std::end(feasiblePlacements.at(i)))
-        };
-
-        int bestAreaValue = std::numeric_limits<unsigned short>::max();
-
-        for (std::list<FeasiblePlacement>::iterator it = placementsList.begin(); it != placementsList.end(); ++it) {
-            FeasiblePlacement fp = *it;
-
-            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
-
-            if (area < bestAreaValue) {
-                bestAreaValue = area;
-            }
-        }
-
-        placementsList.remove_if([bestAreaValue](FeasiblePlacement placement) {
-            unsigned short area = placement.getDimension().get_x() * placement.getDimension().get_y();
-            return area > bestAreaValue * 1.2;
-        });
-
-        std::vector<FeasiblePlacement> newVector{placementsList.begin(), placementsList.end()};
-        feasiblePlacements.at(i) = newVector;
-    }*/
-
-
-    //float maxArea = 2*std::exp(-problem->getNumRegions()/20)+1.05;
     float maxArea = 1.0 / 2.0 / percentage + 1.0 / 2.0;
     std::cout<<"Problem max area: "<<maxArea<<std::endl;
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
@@ -408,7 +381,7 @@ int main() {
 
             unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
 
-            if(area <= bestAreaValue * 1.1) {
+            if(area <= bestAreaValue * 1000) {
                 feasiblePlacements.at(i).at(l) = placementVector.at(k);
                 l++;
             }

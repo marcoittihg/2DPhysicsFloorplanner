@@ -18,12 +18,13 @@ void MainLoopManager::startLoop() {
     while(!glfwWindowShouldClose(Render::getINSTANCE().getWindow())) {
         Physics::getINSTANCE().doStep();
 
+        /*
         phyStepCont++;
 
         if(phyStepCont % 1000 == 0) {
             Render::getINSTANCE().onUpdateScreeen();
             phyStepCont = 0;
-        }
+        }*/
     }
 
     glfwTerminate();

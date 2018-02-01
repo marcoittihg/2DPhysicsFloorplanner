@@ -8,6 +8,7 @@
 enum FloortplanningMangerState{
     START,
     WAITING_FOR_WIRE_STABILITY,
+    WIRE_STABILITY_IMPROVEMENT,
     SEARCH_PLACEM,
     END
 };

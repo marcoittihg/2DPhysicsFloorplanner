@@ -55,7 +55,7 @@ void PhysicsRegion::fixedPhysicsStep() {
 
     FloortplanningMangerState floorplanningState = FloorplanningManager::getINSTANCE().getState();
 
-    if(floorplanningState == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
+    if(floorplanningState == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY || floorplanningState == FloortplanningMangerState::WIRE_STABILITY_IMPROVEMENT){
         //If a region is inside the radius of the circle the other region take the separation force
         PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
 
@@ -440,10 +440,9 @@ void PhysicsRegion::evaluatePlacementAndShape(bool isStart) {
 
     floatingTime++;
 
-    anchorForceMultiplier = 0.1
+    anchorForceMultiplier = 0.1 * floatingTime
                             + 10 / (stabPoint.mangnitude()+0.1)
-                            + 100 / (float)placementNum
-                            + floatingTime * 0.1;
+                            + 100 / (float)placementNum;
 
     preferedAnchorPoint = Vector2(
             prefPlacemnt.getStartPosition().get_x() + prefPlacemnt.getDimension().get_x() * 0.5,

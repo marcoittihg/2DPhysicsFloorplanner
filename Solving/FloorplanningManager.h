@@ -9,6 +9,8 @@
 #include "MainLoopManager.h"
 #include "../Data/ProblemData/Problem.h"
 #include "FloortplanningMangerState.h"
+#include "../BaseUtils/Vector2.h"
+#include "FloorplanSolution.h"
 
 /**
  * Manages the floorplanning phases
@@ -32,6 +34,8 @@ public:
 
     FloortplanningMangerState getState() const;
 
+    void setStartTime(time_t startTime);
+
 private:
     Problem* problem;
 
@@ -41,6 +45,8 @@ private:
 
     float wireStabTime;
 
+    float wireStabImprovementTime;
+
     float closestAlternativeRefreshTime;
 
     float lastAlternativeRefreshTime;
@@ -48,6 +54,26 @@ private:
     float placemStabTime;
 
     time_t tmpTime;
+
+    Vector2* oldWireStabRegionPos;
+
+    float oldWireStabWirelen;
+
+    float realWireStabPositionsImprovementTime;
+
+    time_t phaseStartTime;
+
+    time_t startTime;
+
+    FloorplanSolution* solutions;
+
+    int numSolutions = 10;
+
+    int bestSolutionScore;
+
+    float minDisplacePercentage;
+    float maxDisplacePercentage;
+
 };
 
 

@@ -6,17 +6,35 @@
 #include <iostream>
 #include <cmath>
 #include <set>
+#include <random>
 #include "FloorplanningManager.h"
 #include "PhysicsRegion.h"
 
 void FloorplanningManager::start() {
     _time = 0;
     wireStabTime = 200.0;
-    closestAlternativeRefreshTime = 80.0;
+    wireStabImprovementTime = 10.0;
+    closestAlternativeRefreshTime = 60.0;
     lastAlternativeRefreshTime = 0.0;
+
+    realWireStabPositionsImprovementTime = 60 * 5;
 
     placemStabTime = 60.0f;
     state = FloortplanningMangerState::START;
+
+    oldWireStabRegionPos = new Vector2[Physics::getINSTANCE().getRegionNum()];
+    oldWireStabWirelen = std::numeric_limits<float>::max();
+
+    solutions = new FloorplanSolution[numSolutions];
+    for (int i = 0; i < numSolutions; ++i) {
+        solutions[i].score = std::numeric_limits<int>::min();
+        solutions[i].placementsIndexes = new int[Physics::getINSTANCE().getRegionNum()];
+    }
+
+    bestSolutionScore = std::numeric_limits<int>::min();
+
+    minDisplacePercentage = 0.1;
+    maxDisplacePercentage = 0.5;
 }
 
 void FloorplanningManager::onPysicsStep() {
@@ -42,140 +60,6 @@ void FloorplanningManager::onPysicsStep() {
                 regions[i].getRb()->setDimension(Vector2(radius,radius));
                 floatingReg++;
             }
-        }
-
-        if(floatingReg == 0) {
-            state = FloortplanningMangerState::END;
-
-            bool improved = true;
-            while(improved) {
-                improved = false;
-                for (int m = 0; m < regionNum; ++m) {
-                    if (regions[m].getRegionState() != PhysicsRegionState::PLACED)
-                        continue;
-
-                    FeasiblePlacement nowPlacement = regions[m].getFeasiblePlacements()[regions[m].getPreferdPlacementIndex()];
-                    unsigned int nowScore = regions[m].evaluatePlacement(nowPlacement, true);
-                    unsigned int bestScore = nowScore;
-                    int index = -1;
-
-                    for (int i = 0; i < regions[m].getPlacementNum(); ++i) {
-                        FeasiblePlacement placement = regions[m].getFeasiblePlacements()[i];
-
-                        //Check if the placement overlap with the taken placement of an other placed regions
-                        bool found = false;
-                        for (int j = 0; j < regionNum; ++j) {
-                            if (j == m || regions[j].getRegionState() != PhysicsRegionState::PLACED)
-                                continue;
-
-                            FeasiblePlacement otherFP = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
-                            if (FeasiblePlacement::checkCollision(&placement, &otherFP,
-                                                                  Physics::getINSTANCE().getBoard()->getTileHeight())) {
-                                found = true;
-                                break;
-                            }
-                        }
-
-                        if (found)
-                            continue;
-
-                        unsigned int score = regions[m].evaluatePlacement(placement, true);
-
-                        if (score < bestScore) {
-                            bestScore = score;
-                            index = i;
-                        }
-                    }
-
-                    if (bestScore < nowScore) {
-                        //Found a better placement
-                        FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
-
-                        Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_y() / 2,
-                                                            -(float) boardDim.get_x() / 2);
-
-                        Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),
-                                                    newPlacement.getStartPosition().get_y());
-                        regionPos.add(minusHalfBoardDim);
-
-                        Vector2 halfDim = Vector2((float) newPlacement.getDimension().get_x() * 0.5,
-                                                  (float) newPlacement.getDimension().get_y() * 0.5);
-                        regionPos.add(halfDim);
-
-                        regions[m].getRb()->setPosition(regionPos);
-                        regions[m].getRb()->setDimension(
-                                Vector2(newPlacement.getDimension().get_x(), newPlacement.getDimension().get_y()));
-
-                        regions[m].setPreferdPlacementIndex(index);
-                        regions[m].setPreferedAnchorPoint(regionPos);
-
-                        improved = true;
-                    }
-
-
-                }
-            }
-
-            //Print the solution
-            std::cout<<"Solution: "<<std::endl;
-            for (int i = 0; i < regionNum; ++i) {
-                PhysicsRegion region = regions[i];
-                FeasiblePlacement fp = region.getFeasiblePlacements()[region.getPreferdPlacementIndex()];
-
-                std::cout<<fp.getStartPosition().get_x()+1<<" "<< fp.getStartPosition().get_y()+1<<" "<<+fp.getDimension().get_x()<<" "<<+fp.getDimension().get_y()<<std::endl;
-            }
-
-            //Print total wirelen
-            float wirelenSum = 0;
-            for (int i = 0; i < regionNum; ++i) {
-                //For each region
-                PhysicsRegion region = regions[i];
-
-                std::vector<PhysicsRegion*> intercRegions = region.getInterconnectedRegions();
-                std::vector<int> intercWeight = region.getInterconnectedRegionsWeights();
-                for (int j = 0; j < intercRegions.size(); ++j) {
-                    //For each interc region
-                    PhysicsRegion* intercRegion = intercRegions.at(j);
-
-                    Vector2 distance = intercRegion->getRb()->getPosition();
-                    distance.multiply(-1);
-                    distance.add(region.getRb()->getPosition());
-
-                    float xDist = std::abs(distance.getX());
-                    float yDist = std::abs(distance.getY());
-
-                    float wirelen = ((xDist + yDist) * intercWeight.at(j)) / 2;
-
-                    wirelenSum += wirelen;
-                }
-
-                Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-                Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
-
-                Vector2 regionPos = region.getRb()->getPosition();
-
-                for (int j = 0; j < region.getIONum(); ++j) {
-                    RegionIOData* IOData = region.getRegionIO();
-
-                    Vector2 IOPos = Vector2(IOData->getPortColumn(),IOData->getPortRow());
-                    IOPos.add(minusHalfBoardDim);
-                    IOPos.multiply(-1);
-                    IOPos.add(regionPos);
-
-                    float xDist = std::abs(IOPos.getX());
-                    float yDist = std::abs(IOPos.getY());
-
-                    float wirelen = (xDist + yDist) * IOData->getNumWires();
-
-                    wirelenSum += wirelen;
-                }
-
-            }
-
-            std::cout << std::endl << "Total wirelen: " << wirelenSum * problem->getWireCost() << std::endl;
-
-            return;
         }
 
         //Set coefficients
@@ -207,60 +91,210 @@ void FloorplanningManager::onPysicsStep() {
             Physics::getINSTANCE().setEnableBarrierCollisions(true);
             _time = 0;
             Physics::getINSTANCE().setIoForceMultiplier(1);
-            Physics::getINSTANCE().setEnableRegionCollisions(false);
             tmpTime = time(NULL);
+
+            phaseStartTime = time(NULL);
         }
     } else if(state == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
-        PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
-        int regionNum = problem->getNumRegions();
-
 
         if(_time > 100)
-            Physics::getINSTANCE().setSeparationCoeff(0+1000000* (_time-100)*(_time-100)/(wireStabTime - 100) / (wireStabTime - 100));
+            Physics::getINSTANCE().setSeparationCoeff(2000 * (_time - 100));
         else
             Physics::getINSTANCE().setSeparationCoeff(0);
 
         if(_time > wireStabTime){
-            //Save wire stability position for each floating region
-            for (int i = 0; i < regionNum; ++i) {
-                if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
-                    regions[i].savePositionAsWireStability();
-                }
-            }
-
-            //Evaluate each region
-            for (int i = 0; i < regionNum; ++i) {
-                if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
-                    //If the region is floating evaluate the new placement and shape
-                    regions[i].evaluatePlacementAndShape(true);
-                    regions[i].getRb()->setPosition(regions[i].getPreferedAnchorPoint());
-                    regions[i].getRb()->setSpeed(Vector2(0,0));
-                }
-            }
-
-
             //Go to search placement state
             _time = 0;
-            state = FloortplanningMangerState::SEARCH_PLACEM;
-            Physics::getINSTANCE().setNoiseSpeedCoeff(10);
-            Physics::getINSTANCE().setNoiseModulus(0);
-            Physics::getINSTANCE().setWireForceCoeff(0.0);
-            Physics::getINSTANCE().setEnableBarrierCollisions(false);
-            Physics::getINSTANCE().setIoForceMultiplier(1);
-            Physics::getINSTANCE().setEnableRegionCollisions(true);
-
-            time_t wireStabEndTime = time(NULL);
-            std::cout<<"Wire stability search time : "<<wireStabEndTime - tmpTime<<std::endl;
-            tmpTime = wireStabEndTime;
+            state = FloortplanningMangerState::WIRE_STABILITY_IMPROVEMENT;
         }
 
+    }else if(state == FloortplanningMangerState::WIRE_STABILITY_IMPROVEMENT){
+
+        Physics::getINSTANCE().setSeparationCoeff(2000 * (_time + wireStabTime - wireStabImprovementTime - 100));
+
+        //if the time is up.. go to the search phase
+        if(_time > wireStabImprovementTime){
+
+            time_t now = time(NULL);
+            PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
+            int regionNum = Physics::getINSTANCE().getRegionNum();
+
+            if(now-phaseStartTime > realWireStabPositionsImprovementTime){
+                //Go to search placements stage
+                _time = 0;
+                state = FloortplanningMangerState::SEARCH_PLACEM;
+
+                Physics::getINSTANCE().setEnableRegionCollisions(true);
+                Physics::getINSTANCE().setWireForceCoeff(0);
+                Physics::getINSTANCE().setEnableBarrierCollisions(false);
+
+                time_t wireStabEndTime = time(NULL);
+                std::cout<<"Wire stability search time : "<<wireStabEndTime - tmpTime<<std::endl;
+                tmpTime = wireStabEndTime;
+
+
+                //Save wire stability position for each floating region
+                for (int i = 0; i < regionNum; ++i) {
+                    regions[i].getRb()->setPosition(oldWireStabRegionPos[i]);
+                }
+                for (int i = 0; i < regionNum; ++i) {
+                    if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
+                        regions[i].savePositionAsWireStability();
+                    }
+                }
+
+                //Evaluate each region
+                for (int i = 0; i < regionNum; ++i) {
+                    if(regions[i].getRegionState() == PhysicsRegionState::FLOATING) {
+                        //If the region is floating evaluate the new placement and shape
+                        regions[i].evaluatePlacementAndShape(true);
+                        regions[i].getRb()->setPosition(regions[i].getPreferedAnchorPoint());
+                        regions[i].getRb()->setSpeed(Vector2(0,0));
+                    }
+                }
+                return;
+            }
+
+            Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+            Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+
+            //Calculate actual wire stability wirelen
+            float wirelen = 0;
+
+            for (int i = 0; i < regionNum; ++i) {
+                Vector2 regionPos = regions[i].getRb()->getPosition();
+
+                std::vector<PhysicsRegion*> intercRegions = regions[i].getInterconnectedRegions();
+                for (int j = 0; j < intercRegions.size(); ++j) {
+                    Vector2 dist = regionPos;
+                    dist.multiply(-1);
+                    dist.add(intercRegions.at(j)->getRb()->getPosition());
+
+                    float halfDistance = dist.mangnitude() * 0.5;
+
+                    wirelen += halfDistance * regions[i].getInterconnectedRegionsWeights().at(j);
+                }
+
+                RegionIOData* regionIODatas = regions[i].getRegionIO();
+
+
+                for (int k = 0; k < regions[i].getIONum(); ++k) {
+                    Vector2 IOPos = Vector2(regionIODatas[k].getPortColumn(), regionIODatas[k].getPortRow());
+                    IOPos.add(minusHalfBoardDim);
+                    IOPos.multiply(-1);
+                    IOPos.add(regionPos);
+
+                    float IODistance = IOPos.mangnitude();
+
+                    wirelen += IODistance * regionIODatas[k].getNumWires();
+                }
+            }
+
+            //Save positions as new best if there is an improvement
+            if(wirelen < oldWireStabWirelen){
+                std::cout<<"Improved!..save"<< wirelen <<std::endl;
+                oldWireStabWirelen = wirelen;
+
+                for (int i = 0; i < regionNum; ++i) {
+                    oldWireStabRegionPos[i] = regions[i].getRb()->getPosition();
+                }
+            }else{
+                //Otherwise restore old positions
+                for (int i = 0; i < regionNum; ++i) {
+                    regions[i].getRb()->setPosition(oldWireStabRegionPos[i]);
+                }
+            }
+
+            //Set at 0 all the velocities
+            for (int i = 0; i < regionNum; ++i) {
+                regions[i].getRb()->setSpeed(Vector2(0,0));
+            }
+
+            //chose the number of moves to apply
+            std::random_device r;
+            std::mt19937_64 generator(r());
+            std::uniform_int_distribution<int> movesDistribution(1, 3);
+            int numMoves = movesDistribution(generator);
+
+
+            //Chose the next improvement to try
+            std::uniform_real_distribution<float> distribution(0,1);
+
+            for (int m = 0; m < numMoves; ++m) {
+                float value = distribution(generator);
+
+                if (value < 0.5) {
+                    //Move one regions at the center of its interconnections
+
+                    //Select a random region
+                    std::uniform_int_distribution<int> regionDistribution(0, regionNum - 1);
+                    int regionIndex = regionDistribution(generator);
+
+                    //Calculate weighted center
+                    int numConnections =
+                            regions[regionIndex].getInterconnectedRegions().size() + regions[regionIndex].getIONum();
+                    Vector2 positions[numConnections];
+                    int weights[numConnections];
+
+                    RegionIOData *regionIODatas = regions[regionIndex].getRegionIO();
+                    for (int i = 0; i < regions[regionIndex].getIONum(); ++i) {
+                        Vector2 IOPos = Vector2(regionIODatas[i].getPortColumn(), regionIODatas[i].getPortRow());
+                        IOPos.add(minusHalfBoardDim);
+
+                        positions[i] = IOPos;
+                        weights[i] = regionIODatas[i].getNumWires();
+                    }
+
+                    std::vector<PhysicsRegion *> intercRegions = regions[regionIndex].getInterconnectedRegions();
+                    std::vector<int> intercRegionsWeights = regions[regionIndex].getInterconnectedRegionsWeights();
+                    for (int j = 0; j < intercRegions.size(); ++j) {
+                        positions[regions[regionIndex].getIONum() - 1 + j] = intercRegions[j]->getRb()->getPosition();
+                        weights[regions[regionIndex].getIONum() - 1 + j] = intercRegionsWeights[j];
+                    }
+
+                    int weightSum = 0;
+                    for (int k = 0; k < numConnections; ++k) {
+                        positions[k].multiply(weights[k]);
+                        weightSum += weights[k];
+                    }
+
+                    Vector2 meanVector = Vector2(0, 0);
+                    for (int l = 0; l < numConnections; ++l) {
+                        meanVector.add(positions[l]);
+                    }
+
+                    meanVector.multiply(((float) 1 / (float) weightSum));
+                    regions[regionIndex].getRb()->setPosition(meanVector);
+
+                } else {
+                    //Try to swap two regions
+
+                    //select the first region
+                    std::uniform_int_distribution<int> regionDistribution(0, regionNum - 1);
+                    int regionIndex1 = regionDistribution(generator);
+                    int regionIndex2;
+
+                    //Select the second region
+                    do {
+                        regionIndex2 = regionDistribution(generator);
+                    } while (regionIndex1 == regionIndex2);
+
+                    //Swap positions
+                    Vector2 tmpPos = regions[regionIndex1].getRb()->getPosition();
+                    regions[regionIndex1].getRb()->setPosition(regions[regionIndex2].getRb()->getPosition());
+                    regions[regionIndex2].getRb()->setPosition(tmpPos);
+                }
+            }
+
+            _time = 0;
+        }
     }else if(state == FloortplanningMangerState::SEARCH_PLACEM){
-        if(_time > 40)
-            Physics::getINSTANCE().setSeparationCoeff((_time-40));
+        if(_time > 0)
+            Physics::getINSTANCE().setSeparationCoeff((_time));
         else{
             Physics::getINSTANCE().setSeparationCoeff(0);
         }
-        Physics::getINSTANCE().setPreferedAnchorCoeff(5*_time);
+        Physics::getINSTANCE().setPreferedAnchorCoeff(1);
         //Physics::getINSTANCE().setClosestAnchorCoeff(sqrt(time));
         //Physics::getINSTANCE().setNoiseModulus(sqrt(time));
 
@@ -446,151 +480,387 @@ void FloorplanningManager::onPysicsStep() {
             }
 
             if(!found){
-                state = FloortplanningMangerState ::START;
-
-                time_t placementSearchEndTime = time(NULL);
-                std::cout<<"Placements search time : "<<placementSearchEndTime - tmpTime<<std::endl;
-                tmpTime = placementSearchEndTime;
-
+                state = FloortplanningMangerState ::END;
             }
             _time = 0;
         }
-
-        /*
-        if( time < placemStabTime)
-            return;
-
-        //Evaluate if the placement is flaoting or placed
-        //A placement is placed if its distance from the prefered placing is close to 0
-        //If all the regions are placed the solution is found
-        int floatingCounter = 0;
-        for (int j = 0; j < regionNum; ++j) {
-            bool found = false;
-            for (int i = 0; i < regionNum; ++i) {
-                if(i == j)
-                    continue;
-                //The region must not overlap with placements of other regions
-                if(FeasiblePlacement::checkCollision(
-                        &regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()],
-                        &regions[i].getFeasiblePlacements()[regions[i].getPreferdPlacementIndex()],
-                        Physics::getINSTANCE().getBoard()->getTileHeight()
-                        )
-                        ){
-                    found = true;
-                    break;
-                }
-            }
-            if(found){
-                regions[j].setRegionState(PhysicsRegionState::FLOATING);
-                floatingCounter++;
-                continue;
-            }
-
-            Vector2 minusAchorPos = regions[j].getPreferedAnchorPoint();
-            minusAchorPos.multiply(-1);
-
-            minusAchorPos.add(regions[j].getRb()->getPosition());
-
-            float distance = minusAchorPos.sqrMagnitude();
-
-            if(distance < 0.001){
-                regions[j].setRegionState(PhysicsRegionState::PLACED);
-            }else{
-                regions[j].setRegionState(PhysicsRegionState::FLOATING);
-                floatingCounter++;
-            }
-        }
-
-        if(floatingCounter == 0){
-            //All the regions are placed
-            time = 0;
-            state = FloortplanningMangerState::START;
-        }
-
-
-        */
-        //Check if one region meet the requirements to take it's prefered placement
-        /*
+    }else if(state == FloortplanningMangerState::END){
         PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
         int regionNum = problem->getNumRegions();
 
-        for (int j = 0; j < regionNum; ++j) {
-            //for each region check if there is an other region that
-            //share the prefered placement area for at most n%
-            //If it is not the region is placed
-            if(regions[j].getRegionState() == PhysicsRegionState::PLACED)
-                continue;
-
-            int prefIndex = regions[j].getPreferdPlacementIndex();
-
-            FeasiblePlacement fp = regions[j].getFeasiblePlacements()[prefIndex];
-
-            //placement point2d to float
-            Vector2 placementPos, placementDim;
-            Vector2 oldPlacementPos, oldPlacementDim;
-
-            Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
-            Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
-
-            placementPos = Vector2(fp.getStartPosition().get_x(),fp.getStartPosition().get_y());
-            placementDim = Vector2(fp.getDimension().get_x(),fp.getDimension().get_y());
-
-            placementPos.add(minusHalfBoardDim);
-
-            float placementTotArea = placementDim.getX() * placementDim.getY();
-
-            oldPlacementPos = placementPos;
-            oldPlacementDim = placementDim;
-
-            Rigidbody* rbRegion = regions[j].getRb();
-
-            placementPos.setX( std::max(placementPos.getX(), rbRegion->getPosition().getX() - rbRegion->getDimension().getX() * (float)0.5));
-            placementPos.setY( std::max(placementPos.getY(), rbRegion->getPosition().getY() - rbRegion->getDimension().getY() * (float)0.5));
-
-            placementDim.setX( std::min(oldPlacementPos.getX() + oldPlacementDim.getX(), rbRegion->getPosition().getX()+ rbRegion->getDimension().getX()* (float)0.5));
-            placementDim.setY( std::min(oldPlacementPos.getY() + oldPlacementDim.getY(), rbRegion->getPosition().getY()+ rbRegion->getDimension().getY()* (float)0.5));
-
-            placementDim.setX(placementDim.getX() - placementPos.getX());
-            placementDim.setY(placementDim.getY() - placementPos.getY());
-
-            if(placementDim.getX() * placementDim.getY() / placementTotArea < 0.8)
-                continue;   //The area itself do not cover the 80% of the placement so it is impossible to take the placement
-
-
-            bool found = false;
-            for (int i = 0; i < regionNum; ++i) {
-                if(i == j)  //Do not check with itself
+        //Improve the just found solution
+        bool improved = true;
+        while(improved) {
+            improved = false;
+            for (int m = 0; m < regionNum; ++m) {
+                if (regions[m].getRegionState() != PhysicsRegionState::PLACED)
                     continue;
 
-                Vector2 overlappArea;
-                Vector2 overlappAreaStop;
-                Vector2 regPos = regions[i].getRb()->getPosition();
-                Vector2 regDim = regions[i].getRb()->getDimension();
+                FeasiblePlacement nowPlacement = regions[m].getFeasiblePlacements()[regions[m].getPreferdPlacementIndex()];
+                unsigned int nowScore = regions[m].evaluatePlacement(nowPlacement, true);
+                unsigned int bestScore = nowScore;
+                int index = -1;
 
-                overlappArea.setX(std::max(placementPos.getX(), regPos.getX() - regDim.getX()* (float)0.5));
-                overlappArea.setY(std::max(placementPos.getY(), regPos.getY() - regDim.getY()* (float)0.5));
+                for (int i = 0; i < regions[m].getPlacementNum(); ++i) {
+                    FeasiblePlacement placement = regions[m].getFeasiblePlacements()[i];
 
-                overlappAreaStop.setX(std::min(placementPos.getX() + placementDim.getX(), regPos.getX() + regDim.getX()* (float)0.5));
-                overlappAreaStop.setY(std::min(placementPos.getY() + placementDim.getY(), regPos.getY() + regDim.getY()* (float)0.5));
+                    //Check if the placement overlap with the taken placement of an other placed regions
+                    bool found = false;
+                    for (int j = 0; j < regionNum; ++j) {
+                        if (j == m || regions[j].getRegionState() != PhysicsRegionState::PLACED)
+                            continue;
 
-                float overArea = (overlappAreaStop.getX() - overlappArea.getX()) * (overlappAreaStop.getY() - overlappArea.getY());
+                        FeasiblePlacement otherFP = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
+                        if (FeasiblePlacement::checkCollision(&placement, &otherFP,
+                                                              Physics::getINSTANCE().getBoard()->getTileHeight())) {
+                            found = true;
+                            break;
+                        }
+                    }
 
-                float newFreeArea = placementTotArea - overArea;
+                    if (found)
+                        continue;
 
-                if(newFreeArea / placementTotArea < 0.8){
-                    //Placement found
+                    unsigned int score = regions[m].evaluatePlacement(placement, true);
+
+                    if (score < bestScore) {
+                        bestScore = score;
+                        index = i;
+                    }
+                }
+
+                if (bestScore < nowScore) {
+                    //Found a better placement
+                    FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
+
+                    Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+                    Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_y() / 2,
+                                                        -(float) boardDim.get_x() / 2);
+
+                    Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),
+                                                newPlacement.getStartPosition().get_y());
+                    regionPos.add(minusHalfBoardDim);
+
+                    Vector2 halfDim = Vector2((float) newPlacement.getDimension().get_x() * 0.5,
+                                              (float) newPlacement.getDimension().get_y() * 0.5);
+                    regionPos.add(halfDim);
+
+                    regions[m].getRb()->setPosition(regionPos);
+                    regions[m].getRb()->setDimension(
+                            Vector2(newPlacement.getDimension().get_x(), newPlacement.getDimension().get_y()));
+
+                    regions[m].setPreferdPlacementIndex(index);
+                    regions[m].setPreferedAnchorPoint(regionPos);
+
+                    improved = true;
+                }
+
+
+            }
+        }
+
+        //Evaluate the just found solution
+        int score = problem->getMaxScore();
+
+        Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+        Vector2 minusHalfBoardDim = Vector2(-(float)boardDim.get_y() / 2, -(float)boardDim.get_x() / 2);
+
+        for (int k = 0; k < regionNum; ++k) {
+            Vector2 regionPos = regions[k].getRb()->getPosition();
+
+            score -= regions[k].getFeasiblePlacements()[regions[k].getPreferdPlacementIndex()].getAreaCost() * problem->getAreaCost();
+
+            RegionIOData* ioData = regions[k].getRegionIO();
+            for (int i = 0; i < regions[k].getIONum(); ++i) {
+                Vector2 IOPos = Vector2(ioData[i].getPortColumn(), ioData[i].getPortRow());
+                IOPos.add(minusHalfBoardDim);
+                IOPos.multiply(-1);
+                IOPos.add(regionPos);
+
+                float distance = IOPos.mangnitude();
+
+                score -= distance * ioData[i].getNumWires() * problem->getWireCost();
+            }
+
+            std::vector<PhysicsRegion*> intercRegions = regions[k].getInterconnectedRegions();
+            std::vector<int> intercRegionsWeights = regions[k].getInterconnectedRegionsWeights();
+            for (int j = 0; j < intercRegions.size(); ++j) {
+                PhysicsRegion* intercRegion = intercRegions.at(j);
+
+                Vector2 dist = regionPos;
+                dist.multiply(-1);
+                dist.add(intercRegions.at(j)->getRb()->getPosition());
+
+                float halfDistance = dist.mangnitude() * 0.5;
+
+                score -= halfDistance * intercRegionsWeights.at(j) * problem->getWireCost();
+            }
+        }
+
+        //Save the solution if better than an already existing one
+        int index = -1;
+        for (int l = 0; l < numSolutions; ++l) {
+            if(solutions[l].score < score){
+                index = l;
+                break;
+            }
+        }
+
+        if(index != -1){
+            //Check if the same solution already exist
+            bool found = false;
+            for (int j = 0; j < numSolutions; ++j) {
+                bool differentPlacementFound = false;
+
+                for (int i = 0; i < regionNum; ++i) {
+                    if(solutions[index].placementsIndexes[i] != regions[i].getPreferdPlacementIndex()){
+                        differentPlacementFound = true;
+                        break;
+                    }
+                }
+                if(!differentPlacementFound) {
                     found = true;
                     break;
                 }
             }
-            if(!found && time > placemStabTime){
-                //std::cout<<"P Found:"<< j<<std::endl;
-                regions[j].setRegionState(PhysicsRegionState::PLACED);
-                time = 0;
-                state = FloortplanningMangerState::START;
+
+            if(!found) {
+                //Save the solution
+                solutions[index].score = score;
+
+                for (int i = 0; i < regionNum; ++i) {
+                    solutions[index].placementsIndexes[i] = regions[i].getPreferdPlacementIndex();
+                }
+            }
+        }
+
+        //Print the best solution if there is an improvement
+        int best = std::numeric_limits<int>::min();
+        int bestIndex = -1;
+        for (int l = 0; l < numSolutions; ++l) {
+            if(solutions[l].score > best){
+                best = solutions[l].score;
+                bestIndex = l;
+            }
+        }
+
+        if(best > bestSolutionScore){
+            bestSolutionScore = best;
+
+            //Print the new best solutions
+            std::cout<<"Found new best solution"<<std::endl;
+
+
+            time_t placementSearchEndTime = time(NULL);
+            std::cout<<"Elapse : "<<placementSearchEndTime - startTime<<std::endl;
+
+
+            std::cout<<"Score: "<<bestSolutionScore<<std::endl;
+
+            for (int i = 0; i < regionNum; ++i) {
+                FeasiblePlacement fp = regions[i].getFeasiblePlacements()[regions[i].getPreferdPlacementIndex()];
+
+                Point2D start = fp.getStartPosition();
+                Point2D dim = fp.getDimension();
+
+                std::cout << +start.get_x() + 1 << " " << +start.get_y() + 1 << " "
+                          << +dim.get_x() << " " << +dim.get_y() << std::endl;
+            }
+            std::cout << std::endl;
+        }
+
+
+        //Select the new solution to improve
+        int improveIndex = -1;
+        for (int n = 0; n < numSolutions; ++n) {
+            if(solutions[n].score == std::numeric_limits<int>::min()){
+                improveIndex = n;
+                break;
+            }
+        }
+
+        std::random_device r;
+        std::mt19937_64 generator(r());
+
+        if(improveIndex == -1){
+            std::uniform_int_distribution<int> uniform_dist(0, numSolutions-1);
+            improveIndex = uniform_dist(generator);
+
+            //Load the old solution
+            FloorplanSolution solution = solutions[improveIndex];
+
+            for (int i = 0; i < regionNum; ++i) {
+                regions[i].setPreferdPlacementIndex(solution.placementsIndexes[i]);
+
+                FeasiblePlacement fp = regions[i].getFeasiblePlacements()[solution.placementsIndexes[i]];
+
+                regions[i].getRb()->setDimension(Vector2(fp.getDimension().get_x(),fp.getDimension().get_y()));
+
+                Vector2 anchorPoint = Vector2(
+                        fp.getStartPosition().get_x() + fp.getDimension().get_x() * 0.5,
+                        fp.getStartPosition().get_y() + fp.getDimension().get_y() * 0.5
+                );
+                anchorPoint.add(minusHalfBoardDim);
+
+                regions[i].setPreferedAnchorPoint(anchorPoint);
             }
 
-        }*/
+            //Displace some regions
+            std::uniform_real_distribution<float> displacePercentageDist(minDisplacePercentage, maxDisplacePercentage);
+
+            int regionsToDisplace = (int)( std::floorf(displacePercentageDist(generator)* regionNum) + 1 );
+
+            float scoreLossSum = 0;
+            float regionsScoreLoss[regionNum];
+
+            for (int j = 0; j < regionNum; ++j) {
+                float scoreLoss = 0;
+
+                Vector2 regionPos = regions[j].getRb()->getPosition();
+
+                scoreLoss += regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()].getAreaCost() * problem->getAreaCost();
+
+                RegionIOData* ioData = regions[j].getRegionIO();
+                for (int i = 0; i < regions[j].getIONum(); ++i) {
+                    Vector2 IOPos = Vector2(ioData[i].getPortColumn(), ioData[i].getPortRow());
+                    IOPos.add(minusHalfBoardDim);
+                    IOPos.multiply(-1);
+                    IOPos.add(regionPos);
+
+                    float distance = IOPos.mangnitude();
+
+                    scoreLoss += distance * ioData[i].getNumWires() * problem->getWireCost();
+                }
+
+                std::vector<PhysicsRegion*> intercRegions = regions[j].getInterconnectedRegions();
+                std::vector<int> intercRegionsWeights = regions[j].getInterconnectedRegionsWeights();
+                for (int j = 0; j < intercRegions.size(); ++j) {
+                    Vector2 dist = regionPos;
+                    dist.multiply(-1);
+                    dist.add(intercRegions.at(j)->getRb()->getPosition());
+
+                    float halfDistance = dist.mangnitude() * 0.5;
+
+                    scoreLoss += halfDistance * intercRegionsWeights.at(j) * problem->getWireCost();
+                }
+
+                scoreLossSum += scoreLoss;
+                regionsScoreLoss[j] = scoreLoss;
+            }
+
+            for (int k = 0; k < regionsToDisplace; ++k) {
+                std::uniform_real_distribution<float> displaceDistr(0, scoreLossSum);
+                float generatedLoss = displaceDistr(generator);
+
+                float lossSum = regionsScoreLoss[0];
+                int regionIndex = -1;
+                for (int i = 0; i < regionNum && lossSum < scoreLossSum; ++i) {
+                    lossSum += regionsScoreLoss[i];
+
+                    if(lossSum > generatedLoss){
+                        regionIndex = i;
+                        break;
+                    }
+                }
+
+                if(regionIndex == -1)
+                    continue;
+
+                if(regions[regionIndex].getRegionState() == PhysicsRegionState::FLOATING) //Already floating.. find another one
+                    continue;
+
+                regions[regionIndex].setRegionState(PhysicsRegionState::FLOATING);
+            }
+
+            //Initial local improvement
+            bool improved = true;
+            while(improved) {
+                improved = false;
+                for (int m = 0; m < regionNum; ++m) {
+                    if (regions[m].getRegionState() != PhysicsRegionState::PLACED)
+                        continue;
+
+                    FeasiblePlacement nowPlacement = regions[m].getFeasiblePlacements()[regions[m].getPreferdPlacementIndex()];
+                    unsigned int nowScore = regions[m].evaluatePlacement(nowPlacement, false);
+                    unsigned int bestScore = nowScore;
+                    int index = -1;
+
+                    for (int i = 0; i < regions[m].getPlacementNum(); ++i) {
+                        FeasiblePlacement placement = regions[m].getFeasiblePlacements()[i];
+
+                        //Check if the placement overlap with the taken placement of an other placed regions
+                        bool found = false;
+                        for (int j = 0; j < regionNum; ++j) {
+                            if (j == m || regions[j].getRegionState() != PhysicsRegionState::PLACED)
+                                continue;
+
+                            FeasiblePlacement otherFP = regions[j].getFeasiblePlacements()[regions[j].getPreferdPlacementIndex()];
+                            if (FeasiblePlacement::checkCollision(&placement, &otherFP,
+                                                                  Physics::getINSTANCE().getBoard()->getTileHeight())) {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found)
+                            continue;
+
+                        unsigned int score = regions[m].evaluatePlacement(placement, false);
+
+                        if (score < bestScore) {
+                            bestScore = score;
+                            index = i;
+                        }
+                    }
+
+                    if (bestScore < nowScore) {
+                        //Found a better placement
+                        FeasiblePlacement newPlacement = regions[m].getFeasiblePlacements()[index];
+
+                        Point2D boardDim = Physics::getINSTANCE().getBoard()->getDimension();
+                        Vector2 minusHalfBoardDim = Vector2(-(float) boardDim.get_y() / 2,
+                                                            -(float) boardDim.get_x() / 2);
+
+                        Vector2 regionPos = Vector2(newPlacement.getStartPosition().get_x(),
+                                                    newPlacement.getStartPosition().get_y());
+                        regionPos.add(minusHalfBoardDim);
+
+                        Vector2 halfDim = Vector2((float) newPlacement.getDimension().get_x() * 0.5,
+                                                  (float) newPlacement.getDimension().get_y() * 0.5);
+                        regionPos.add(halfDim);
+
+                        regions[m].getRb()->setPosition(regionPos);
+                        regions[m].getRb()->setDimension(
+                                Vector2(newPlacement.getDimension().get_x(), newPlacement.getDimension().get_y()));
+
+                        regions[m].setPreferdPlacementIndex(index);
+                        regions[m].setPreferedAnchorPoint(regionPos);
+
+                        improved = true;
+                    }
+
+
+                }
+            }
+
+            //Initial evaluation
+            for (int k = 0; k < regionNum; ++k) {
+                if(regions[k].getRegionState() == PhysicsRegionState::PLACED)
+                    continue;
+
+                regions[k].evaluatePlacementAndShape(false);
+                regions[k].getRb()->setPosition(regions[k].getPreferedAnchorPoint());
+                regions[k].getRb()->setSpeed(Vector2(0,0));
+            }
+
+        }else{
+            for (int i = 0; i < regionNum; ++i) {
+                regions[i].setRegionState(PhysicsRegionState::FLOATING);
+            }
+        }
+
+        state = FloortplanningMangerState ::SEARCH_PLACEM;
+        _time = 0;
     }
 }
 
@@ -604,4 +874,8 @@ void FloorplanningManager::setProblem(Problem *problem) {
 
 FloortplanningMangerState FloorplanningManager::getState() const {
     return state;
+}
+
+void FloorplanningManager::setStartTime(time_t startTime) {
+    FloorplanningManager::startTime = startTime;
 }

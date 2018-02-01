@@ -129,8 +129,8 @@ void Physics::doStep() {
 
     maxDistance /= 4;
 
-    if(maxDistance > 0.1){
-        maxDistance = 0.1;
+    if(maxDistance > 0.5){
+        maxDistance = 0.5;
     }
 
     FIXED_STEP_TIME = MAX_STEP_TIME;
