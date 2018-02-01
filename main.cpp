@@ -15,7 +15,8 @@ using namespace std;
 float print_resource_usage(const Problem* problem) {
 
 	Point2D origin(0, 0);
-	const std::map<Block, int> totalResources = problem->getBoard()->getResourcesFor(origin, problem->getBoard()->getDimension());
+	const std::map<Block, int> totalResources = problem->getBoard()
+		->getResourcesFor(origin, problem->getBoard()->getDimension());
 
 	int boardBlockCounter = totalResources.at(Block::CLB_BLOCK)
 		+ totalResources.at(Block::DSP_BLOCK)
@@ -35,15 +36,23 @@ float print_resource_usage(const Problem* problem) {
 }
 
 int main(int argc, char* argv[]) {
-    time_t seconds;
-    seconds = time (NULL);
+   
+	clock_t start = clock();
+
+	if (argc < 2) {
+		cout << "Problem path not set." << endl;
+		return -1;
+	}
+
+	string problemPath(argv[1]);
 
     cout << "*------* STARTING *------*" << endl;
-    cout << "Loading data problem from file\n" << endl;
+    cout << "Loading data problem from file" << endl;
+	cout << "\t<< " << problemPath.c_str() << endl;
 
     Problem* problem;
     try {
-        problem = FileManager::getINSTANCE().readProblem("F:/Documenti/Visual Studio 2017/Projects/BubbleRegionsFloorplanner/Problems/10021");
+        problem = FileManager::getINSTANCE().readProblem(problemPath);
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -51,39 +60,34 @@ int main(int argc, char* argv[]) {
 	float percentage = print_resource_usage(problem);
 
 	//float maxArea = 2*std::exp(-problem->getNumRegions()/20)+1.05;
-	float maxArea = 1.0 / 3.0 / percentage + 2.0 / 3.0 + 0.05;
-	std::cout << "Problem max area: " << maxArea << std::endl;
+	float maxArea = 1.0 / 2.0 / percentage + 0.5;
+
+	if (argc > 2) {
+		maxArea = atof(argv[2]);
+	}
+
+	cout << "Problem max area: " << maxArea << endl;
 
 	PlacementsGenerator* pg = new PlacementsGenerator(problem);
 
-    std::vector<std::vector<FeasiblePlacement>> feasiblePlacements = *(pg->getFeasiblePlacements(maxArea));
+	int minWidth = 1;
+	int minHeight = 1;
+
+	if (argc > 3)
+		minWidth = atoi(argv[3]);
+
+	if (argc > 4)
+		minHeight = atoi(argv[4]);
+
+	cout << "Region constraints:\n\tMin width = " << minWidth << "\n\tMin Height = " << minHeight << endl;
+
+    std::vector<std::vector<FeasiblePlacement>> feasiblePlacements = *(pg->getFeasiblePlacements(maxArea, minWidth, minHeight));
 
 	delete pg;
 
-	int maxP = 0, minP = std::numeric_limits<int>::max(), allP = 0;
-
-	for (int rID = 0; rID < feasiblePlacements.size(); rID++) {
-		int p = feasiblePlacements.at(rID).size();
-
-		if (p > maxP)
-			maxP = p;
-
-		if (p < minP)
-			minP = p;
-
-		allP += p;
-
-		cout << "Region " << rID << " has " << p << " feasible placements." << endl;
-	}
-
-	cout << "Minimum placements per region: " << minP << endl;
-	cout << "Maximum placements per region: " << maxP << endl;
-	cout << "Avarage placements per region: " << allP / feasiblePlacements.size() << endl;
-
-    time_t seconds2;
-    seconds2 = time (NULL);
-	std::cout << "Feasible placements search time : " << seconds2 - seconds << std::endl;
-    seconds = seconds2;
+	clock_t placements = clock() - start;
+	std::cout << "Feasible placements search time : " << (placements / (double)CLOCKS_PER_SEC) << std::endl;
+	
 
     //Precalculate resorces of each placement
     for (int i = 0; i < feasiblePlacements.size(); ++i) {
@@ -160,9 +164,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
-
-    seconds2 = time (NULL);
-    std::cout<<"Regions elimination time : "<<seconds2 - seconds<<std::endl;
+	clock_t elimination = clock() - placements;
+	std::cout << "Regions elimination time : " << (double)(elimination / (double)CLOCKS_PER_SEC) << std::endl;
 
     Physics::getINSTANCE().setBoard(problem->getBoard());
 
