@@ -69,3 +69,5 @@ const Resources &FeasiblePlacement::getResources() const {
 void FeasiblePlacement::setResources(const Resources &resources) {
     FeasiblePlacement::resources = resources;
 }
+
+FeasiblePlacement::FeasiblePlacement() {}

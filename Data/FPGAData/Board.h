@@ -11,7 +11,7 @@
 #include "Block.h"
 #include "../../Solving/Resources.h"
 
-/** Datas about a board of a specific problem
+/** Data about a board of a specific problem
  */
 class Board{
     /** Width and height of the board

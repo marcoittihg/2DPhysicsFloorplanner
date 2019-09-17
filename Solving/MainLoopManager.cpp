@@ -15,16 +15,15 @@ void MainLoopManager::startLoop() {
     Physics::getINSTANCE().onStart();
 
     int phyStepCont= 0;
-    while(!glfwWindowShouldClose(Render::getINSTANCE().getWindow())) {
+    while(true /*!glfwWindowShouldClose(Render::getINSTANCE().getWindow())*/) {
         Physics::getINSTANCE().doStep();
 
-        /*
         phyStepCont++;
 
-        if(phyStepCont % 1000 == 0) {
+        if(phyStepCont % 10 == 0) {
             Render::getINSTANCE().onUpdateScreeen();
             phyStepCont = 0;
-        }*/
+        }
     }
 
     glfwTerminate();

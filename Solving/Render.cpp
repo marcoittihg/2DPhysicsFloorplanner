@@ -6,14 +6,14 @@
 #include "Render.h"
 #include "../Data/FPGAData/Board.h"
 #include "Phyisics/Physics.h"
+#include "FloorplanningManager.h"
 
 void Render::onStart() {
-
-    /* Initialize the library */
+     //Initialize the library
     if (!glfwInit())
         return;
 
-    /* Create a windowed mode window and its OpenGL context */
+    //Create a windowed mode window and its OpenGL context
     window = glfwCreateWindow(1500, 700, "Floorplanner", NULL, NULL);
     if (!window) {
         glfwTerminate();
@@ -21,7 +21,7 @@ void Render::onStart() {
     }
     glfwSwapInterval(1);
 
-    /* Make the window's context current */
+    // Make the window's context current
     glfwMakeContextCurrent(window);
 
     glEnable(GL_BLEND);
@@ -36,17 +36,17 @@ Vector2 Render::worldPointToScreen(Vector2 wp) {
 }
 
 void Render::onUpdateScreeen() {
+
     glClear(GL_COLOR_BUFFER_BIT);
 
     //Draw board
-    Board* board = Physics::getINSTANCE().getBoard();
-
-    glBegin(GL_LINE_LOOP);
 
     int windowWidth, windowHeight;
     glfwGetWindowSize(window, &windowWidth, &windowHeight);
 
     windowRatio = (float)windowWidth / (float)windowHeight;
+
+    Board* board =FloorplanningManager::getINSTANCE().getProblem()->getBoard();
 
     Vector2 boardHalfDimension = Vector2(board->getDimension().get_y(), board->getDimension().get_x());
     boardHalfDimension.multiply(0.5);
@@ -183,6 +183,7 @@ GLFWwindow *Render::getWindow() const {
 }
 
 void Render::drawNumber(unsigned char number, Vector2 startPos) {
+    /*
     int numDigit = 1;
 
     int n = number / 10;
@@ -291,4 +292,5 @@ void Render::drawNumber(unsigned char number, Vector2 startPos) {
 
         number /= 10;
     }
+     */
 }

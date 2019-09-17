@@ -67,12 +67,13 @@ private:
 
     FloorplanSolution* solutions;
 
-    int numSolutions = 10;
+    int numSolutions = 30;
 
     int bestSolutionScore;
 
     float minDisplacePercentage;
     float maxDisplacePercentage;
+    int cont = 0;
 
 };
 

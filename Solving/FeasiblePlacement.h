@@ -43,6 +43,8 @@ class FeasiblePlacement {
     Resources resources;
 
 public:
+    FeasiblePlacement();
+
     const Point2D &getStartPosition() const;
 
     void setStartPosition(const Point2D &startPosition);

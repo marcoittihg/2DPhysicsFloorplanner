@@ -7,208 +7,8 @@
 #include <list>
 #include <cmath>
 
+
 using namespace std;
-
-void getAllFeasiblePlacements2(std::vector<std::vector<FeasiblePlacement>>* feasiblePlacements, Problem* problem){
-    std::cout<<"Generation feasible solutions"<<std::endl;
-
-    char tileHeight = problem->getBoard()->getTileHeight();
-
-    //Linked list that contains all the feasible placements found
-    std::list<FeasiblePlacement>* feasiblePlacementsArray = new std::list<FeasiblePlacement>[problem->getNumRegions()];
-
-    for (int i = 0; i < problem->getNumRegions(); ++i) {
-        std::cout<<"Region: "<<i<<std::endl;
-
-        //For each region of the problem
-        ProblemRegion* problemRegion = const_cast<ProblemRegion *>(problem->getFloorplanProblemRegion(i));
-        RegionType  regionType = problemRegion->getType();
-
-        for (int j = 0; j < problem->getBoard()->getDimension().get_y(); ++j) {
-            for (int k = j + 1; k < problem->getBoard()->getDimension().get_y(); ++k) {
-                //For each possible couple of indexes
-
-                if(regionType == RegionType::PR && ( problem->getLeftValidIDs(j) == 0 || problem->getRightValidIDs(k) == 0 ))
-                    continue;   //The region is PR and (j,k) are not feasible start and end points for that region
-
-                for (int h = 1; h <= problem->getBoard()->getDimension().get_x(); ++h) {
-                    //For each possible height of the board
-
-
-                    int CLBNum, BRAMNum, DSPNum, FORBBlock;
-                    CLBNum = BRAMNum = DSPNum = FORBBlock = 0;
-                    for (int t = 0; t <= problem->getBoard()->getDimension().get_x() - h; ++t) {
-                        //Check for each possible translation of the area
-
-                        //Calculate the number of blocks inside the area
-                        // (from index [j] to index [k] starting from height [l] to height [l+h])
-
-                        if(t == 0) {
-                            //If that is the first iteration sum all the blocks
-                            for (int m = t; m < t + h; ++m) {
-                                for (int n = j; n <= k; ++n) {
-                                    Block block = problem->getBoard()->getBlockMatrix(m, n);
-
-                                    switch (block) {
-                                        case Block::CLB_BLOCK :
-                                            CLBNum++;
-                                            break;
-                                        case Block::BRAM_BLOCK :
-                                            BRAMNum++;
-                                            break;
-                                        case Block::DSP_BLOCK :
-                                            DSPNum++;
-                                            break;
-                                        case Block::FORBIDDEN_BLOCK :
-                                            FORBBlock++;
-                                            break;
-                                    }
-                                }
-                            }
-                        }else{
-                            //If that's not the first iteration just subtract the first line and add the last one
-                            for (int n = j; n <= k ; ++n) {
-                                //Subtract the first one
-                                Block block = problem->getBoard()->getBlockMatrix(t - 1, n);
-
-                                switch (block) {
-                                    case Block::CLB_BLOCK :
-                                        CLBNum--;
-                                        break;
-                                    case Block::BRAM_BLOCK :
-                                        BRAMNum--;
-                                        break;
-                                    case Block::DSP_BLOCK :
-                                        DSPNum--;
-                                        break;
-                                    case Block::FORBIDDEN_BLOCK :
-                                        FORBBlock--;
-                                        break;
-                                }
-                            }
-
-                            for (int n = j; n <= k ; ++n) {
-                                //Add the last one
-                                Block block = problem->getBoard()->getBlockMatrix(t + h - 1, n);
-
-                                switch (block) {
-                                    case Block::CLB_BLOCK :
-                                        CLBNum++;
-                                        break;
-                                    case Block::BRAM_BLOCK :
-                                        BRAMNum++;
-                                        break;
-                                    case Block::DSP_BLOCK :
-                                        DSPNum++;
-                                        break;
-                                    case Block::FORBIDDEN_BLOCK :
-                                        FORBBlock++;
-                                        break;
-                                }
-                            }
-                        }
-
-                        if (FORBBlock > 0) continue; //If there is a forbidden block the solution is not feasible
-
-                        if (CLBNum < problemRegion->getCLBNum() ||
-                            BRAMNum < problemRegion->getBRAMNum() ||
-                            DSPNum < problemRegion->getDSPNum()) {
-                            continue;       //The area does not have the required blocks
-                        }
-
-                        if(regionType == RegionType::PR && (h % tileHeight != 0 || t % tileHeight != 0))
-                            continue;
-
-                        FeasiblePlacement *newPlacement = new FeasiblePlacement();
-                        Point2D startPosition, dimension;
-
-                        startPosition.set_x(j);
-                        startPosition.set_y(t);
-                        newPlacement->setStartPosition(startPosition);
-
-                        dimension.set_x(k - j +1);
-                        dimension.set_y(h);
-                        newPlacement->setDimension(dimension);
-
-                        newPlacement->setRegionType(problemRegion->getType());
-
-                        newPlacement->setAreaCost(
-                                static_cast<unsigned int>(CLBNum * problem->getCLBCost() +
-                                                          BRAMNum * problem->getBRAMCost() +
-                                                          DSPNum * problem->getDSPCost())
-                        );
-
-
-
-                        //Check if there are some areas that contains the just founded area
-                        // or if there is at least one area that contain the just founded area
-                        // In the first case the bigger areas must be removed since we have found a better solution
-                        // In the second case the just founded solution is not a good solution since we already
-                        // have found one area that match the requirements and is contained in the one that i have just found
-                        //
-                        bool foundLittler = false;
-                        for (std::list<FeasiblePlacement>::iterator it = feasiblePlacementsArray[i].begin();
-                             it != feasiblePlacementsArray[i].end();
-                             it++) {
-                            //check if the new founded area is contained in another one
-                            if(newPlacement->checkContains(&(*it))){
-                                foundLittler = true;
-                                break;
-                            }
-                        }
-
-                        //If found a littler one the new founded area is useless
-                        if(foundLittler) break;
-
-
-                        std::list<FeasiblePlacement> elementsToRemove;
-                        for (std::list<FeasiblePlacement>::iterator it = feasiblePlacementsArray[i].begin();
-                             it != feasiblePlacementsArray[i].end();
-                             it++) {
-                            //check if the new founded area is contained in another one
-                            if(it->checkContains(newPlacement)){
-                                elementsToRemove.push_back(*it);
-                            }
-                        }
-
-
-                        //Remove all the elements to remove
-                        for (std::list<FeasiblePlacement>::iterator it = elementsToRemove.begin(); it != elementsToRemove.end() ; ++it) {
-                            feasiblePlacementsArray[i].erase(it);
-                        }
-                        //feasiblePlacementsArray[i].erase(elementsToRemove.begin(), elementsToRemove.end());
-
-                        //add the new found area
-                        feasiblePlacementsArray[i].push_back(*newPlacement);
-                    }
-                }
-            }
-        }
-    }
-
-
-
-    std::cout<<"Building final feasible regions array"<<std::endl;
-
-    feasiblePlacements->resize(problem->getNumRegions());
-    for (int i = 0; i < problem->getNumRegions(); ++i) {
-        //For each region of the problem
-        std::cout << i << std::endl;
-
-        for (std::list<FeasiblePlacement>::iterator it = feasiblePlacementsArray[i].begin();
-             it != feasiblePlacementsArray[i].end();
-             it++) {
-            feasiblePlacements->at(i).push_back(*it);
-        }
-
-    }
-
-    std::cout<<". . . Finish"<< std::endl;
-
-    //Deleting useless generated linked lists
-    delete[] feasiblePlacementsArray;
-
-}
 
 
 void getAllFeasiblePlacements(std::vector<std::vector<FeasiblePlacement>>* feasiblePlacements, Problem* problem){
@@ -315,8 +115,9 @@ int main() {
     cout << "*------* STARTING *------*" << endl;
     cout << "Loading data problem from file\n" << endl;
     Problem* problem;
+
     try {
-        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/RealProblems/25_85.txt");
+        problem = FileManager::getINSTANCE().readProblem("/Users/Marco/CLionProjects/BubbleRegionsFloorplanner/Problems/10020");
     }catch ( const std::invalid_argument& e ){
         fprintf(stderr, e.what());
     }
@@ -378,10 +179,9 @@ int main() {
         for (int k = 0; k < feasiblePlacements.at(i).size(); ++k) {
             FeasiblePlacement fp = feasiblePlacements.at(i).at(k);
 
-
-            unsigned short area = fp.getDimension().get_x() * fp.getDimension().get_y();
-
-            if(area <= bestAreaValue * 1000) {
+            float area = fp.getDimension().get_x() * fp.getDimension().get_y();
+            //if(area <= bestAreaValue * 9999) {
+            if((fp.getDimension().get_y() <= 9999 && fp.getStartPosition().get_x() != 0) || area <= bestAreaValue * 1.05){
                 feasiblePlacements.at(i).at(l) = placementVector.at(k);
                 l++;
             }

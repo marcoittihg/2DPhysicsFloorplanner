@@ -29,7 +29,6 @@ class Rigidbody {
 public:
     Rigidbody();
 
-
     const Vector2 &getPosition() const;
 
     void setPosition(const Vector2 &position);

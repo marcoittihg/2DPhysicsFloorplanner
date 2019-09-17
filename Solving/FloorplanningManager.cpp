@@ -12,14 +12,15 @@
 
 void FloorplanningManager::start() {
     _time = 0;
-    wireStabTime = 200.0;
-    wireStabImprovementTime = 10.0;
+    wireStabTime = 110.0;
+    wireStabImprovementTime = 1.0;
     closestAlternativeRefreshTime = 60.0;
     lastAlternativeRefreshTime = 0.0;
 
-    realWireStabPositionsImprovementTime = 60 * 5;
+    realWireStabPositionsImprovementTime = 0;
 
     placemStabTime = 60.0f;
+
     state = FloortplanningMangerState::START;
 
     oldWireStabRegionPos = new Vector2[Physics::getINSTANCE().getRegionNum()];
@@ -34,7 +35,7 @@ void FloorplanningManager::start() {
     bestSolutionScore = std::numeric_limits<int>::min();
 
     minDisplacePercentage = 0.1;
-    maxDisplacePercentage = 0.5;
+    maxDisplacePercentage = 0.9;
 }
 
 void FloorplanningManager::onPysicsStep() {
@@ -96,6 +97,7 @@ void FloorplanningManager::onPysicsStep() {
             phaseStartTime = time(NULL);
         }
     } else if(state == FloortplanningMangerState::WAITING_FOR_WIRE_STABILITY){
+        std::cout<<_time<<std::endl;
 
         if(_time > 100)
             Physics::getINSTANCE().setSeparationCoeff(2000 * (_time - 100));
@@ -106,20 +108,28 @@ void FloorplanningManager::onPysicsStep() {
             //Go to search placement state
             _time = 0;
             state = FloortplanningMangerState::WIRE_STABILITY_IMPROVEMENT;
+
+            for (int i = 0; i < Physics::getINSTANCE().getRegionNum(); ++i) {
+                oldWireStabRegionPos[i] = Physics::getINSTANCE().getPhysicsRegions()[i].getRb()->getPosition();
+            }
         }
 
     }else if(state == FloortplanningMangerState::WIRE_STABILITY_IMPROVEMENT){
+        std::cout<<_time<<std::endl;
 
         Physics::getINSTANCE().setSeparationCoeff(2000 * (_time + wireStabTime - wireStabImprovementTime - 100));
 
         //if the time is up.. go to the search phase
         if(_time > wireStabImprovementTime){
 
+            cont++;
+            std::cout<<"Attempt "<<cont<<std::endl;
             time_t now = time(NULL);
             PhysicsRegion* regions = Physics::getINSTANCE().getPhysicsRegions();
             int regionNum = Physics::getINSTANCE().getRegionNum();
-
-            if(now-phaseStartTime > realWireStabPositionsImprovementTime){
+            std::cout<<"a";
+            if(now-phaseStartTime >= realWireStabPositionsImprovementTime){
+                std::cout<<"b";
                 //Go to search placements stage
                 _time = 0;
                 state = FloortplanningMangerState::SEARCH_PLACEM;
@@ -577,9 +587,10 @@ void FloorplanningManager::onPysicsStep() {
                 IOPos.multiply(-1);
                 IOPos.add(regionPos);
 
-                float distance = IOPos.mangnitude();
+                float distX = std::abs(IOPos.getX());
+                float distY = std::abs(IOPos.getY());
 
-                score -= distance * ioData[i].getNumWires() * problem->getWireCost();
+                score -= (distX + distY) * ioData[i].getNumWires() * problem->getWireCost();
             }
 
             std::vector<PhysicsRegion*> intercRegions = regions[k].getInterconnectedRegions();
@@ -591,7 +602,10 @@ void FloorplanningManager::onPysicsStep() {
                 dist.multiply(-1);
                 dist.add(intercRegions.at(j)->getRb()->getPosition());
 
-                float halfDistance = dist.mangnitude() * 0.5;
+                float distX = std::abs(dist.getX());
+                float distY = std::abs(dist.getY());
+
+                float halfDistance = (distX + distY) * 0.5;
 
                 score -= halfDistance * intercRegionsWeights.at(j) * problem->getWireCost();
             }
@@ -681,8 +695,10 @@ void FloorplanningManager::onPysicsStep() {
 
         std::random_device r;
         std::mt19937_64 generator(r());
+        std::uniform_real_distribution<float> uniform01(0, 1);
 
-        if(improveIndex == -1){
+        float random = uniform01(generator);
+        if(improveIndex == -1 && random > 0.05){
             std::uniform_int_distribution<int> uniform_dist(0, numSolutions-1);
             improveIndex = uniform_dist(generator);
 
@@ -727,9 +743,10 @@ void FloorplanningManager::onPysicsStep() {
                     IOPos.multiply(-1);
                     IOPos.add(regionPos);
 
-                    float distance = IOPos.mangnitude();
+                    float distX = std::abs(IOPos.getX());
+                    float distY = std::abs(IOPos.getY());
 
-                    scoreLoss += distance * ioData[i].getNumWires() * problem->getWireCost();
+                    scoreLoss += (distX + distY) * ioData[i].getNumWires() * problem->getWireCost();
                 }
 
                 std::vector<PhysicsRegion*> intercRegions = regions[j].getInterconnectedRegions();
@@ -739,7 +756,10 @@ void FloorplanningManager::onPysicsStep() {
                     dist.multiply(-1);
                     dist.add(intercRegions.at(j)->getRb()->getPosition());
 
-                    float halfDistance = dist.mangnitude() * 0.5;
+                    float distX = std::abs(dist.getX());
+                    float distY = std::abs(dist.getY());
+
+                    float halfDistance =(distX+distY) * 0.5;
 
                     scoreLoss += halfDistance * intercRegionsWeights.at(j) * problem->getWireCost();
                 }
@@ -842,21 +862,20 @@ void FloorplanningManager::onPysicsStep() {
 
                 }
             }
-
-            //Initial evaluation
-            for (int k = 0; k < regionNum; ++k) {
-                if(regions[k].getRegionState() == PhysicsRegionState::PLACED)
-                    continue;
-
-                regions[k].evaluatePlacementAndShape(false);
-                regions[k].getRb()->setPosition(regions[k].getPreferedAnchorPoint());
-                regions[k].getRb()->setSpeed(Vector2(0,0));
-            }
-
         }else{
             for (int i = 0; i < regionNum; ++i) {
                 regions[i].setRegionState(PhysicsRegionState::FLOATING);
             }
+        }
+
+        //Initial evaluation
+        for (int k = 0; k < regionNum; ++k) {
+            if(regions[k].getRegionState() == PhysicsRegionState::PLACED)
+                continue;
+
+            regions[k].evaluatePlacementAndShape(false);
+            regions[k].getRb()->setPosition(regions[k].getPreferedAnchorPoint());
+            regions[k].getRb()->setSpeed(Vector2(0,0));
         }
 
         state = FloortplanningMangerState ::SEARCH_PLACEM;
